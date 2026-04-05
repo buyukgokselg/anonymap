@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "51483368324",
+    "project_id": "anonymap-2907",
+    "storage_bucket": "anonymap-2907.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:51483368324:android:b1d672d78e594b02449bd1",
+        "android_client_info": {
+          "package_name": "com.example.anonymap"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBaNYQ8TUzvvbApZhXGl7wnnkSYjrgN_cM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
