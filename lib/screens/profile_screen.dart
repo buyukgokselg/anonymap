@@ -1,11 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../theme/colors.dart';
+import '../models/user_model.dart';
 import '../services/firestore_service.dart';
 import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final String? userId;
+
+  const ProfileScreen({super.key, this.userId});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -14,59 +20,56 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   final _firestoreService = FirestoreService();
-  Map<String, dynamic>? _profile;
+
+  late final TabController _tabController;
+
+  UserModel? _user;
   bool _isLoading = true;
-  late TabController _tabController;
+  bool _isRefreshing = false;
+  bool _isFollowing = false;
+  bool _isFriend = false;
 
-  // Profil bilgileri
-  String _displayName = '';
-  String _bio = '';
-  String _city = 'Hamburg';
-  String _website = '';
+  List<UserModel> _followersList = [];
+  List<UserModel> _followingList = [];
+  List<UserModel> _friendsList = [];
 
-  // Stats
-  final int _pulseScore = 72;
-  final int _placesVisited = 23;
-  final int _vibeTagsCreated = 8;
+  bool _loadingFollowers = false;
+  bool _loadingFollowing = false;
+  bool _loadingFriends = false;
 
-  // Sosyal
-  final int _followers = 128;
-  final int _following = 94;
-  final int _friends = 31;
+  StreamSubscription<List<UserModel>>? _followersSub;
+  StreamSubscription<List<UserModel>>? _followingSub;
 
-  // Demo takipçi listesi
-  final List<Map<String, dynamic>> _followersList = [
-    {'name': 'Ayşe K.', 'username': '@ayse_k', 'pulse': 65, 'mutual': true},
-    {'name': 'Mehmet D.', 'username': '@mehmet_d', 'pulse': 82, 'mutual': false},
-    {'name': 'Lena S.', 'username': '@lena_s', 'pulse': 44, 'mutual': true},
-    {'name': 'Emre B.', 'username': '@emre_b', 'pulse': 91, 'mutual': false},
-    {'name': 'Julia M.', 'username': '@julia_m', 'pulse': 57, 'mutual': true},
-    {'name': 'Can T.', 'username': '@can_t', 'pulse': 73, 'mutual': false},
-    {'name': 'Sophie W.', 'username': '@sophie_w', 'pulse': 38, 'mutual': true},
-  ];
+  String get _myUid => FirebaseAuth.instance.currentUser?.uid ?? '';
+  String get _targetUid => widget.userId ?? _myUid;
+  bool get _isMyProfile => widget.userId == null || widget.userId == _myUid;
 
-  final List<Map<String, dynamic>> _followingList = [
-    {'name': 'Ayşe K.', 'username': '@ayse_k', 'pulse': 65, 'mutual': true},
-    {'name': 'Lena S.', 'username': '@lena_s', 'pulse': 44, 'mutual': true},
-    {'name': 'Deniz A.', 'username': '@deniz_a', 'pulse': 78, 'mutual': false},
-    {'name': 'Max H.', 'username': '@max_h', 'pulse': 55, 'mutual': false},
-    {'name': 'Sophie W.', 'username': '@sophie_w', 'pulse': 38, 'mutual': true},
-  ];
-
-  final List<Map<String, dynamic>> _friendsList = [
-    {'name': 'Ayşe K.', 'username': '@ayse_k', 'pulse': 65, 'since': 'Mart 2026'},
-    {'name': 'Lena S.', 'username': '@lena_s', 'pulse': 44, 'since': 'Şubat 2026'},
-    {'name': 'Sophie W.', 'username': '@sophie_w', 'pulse': 38, 'since': 'Nisan 2026'},
-    {'name': 'Julia M.', 'username': '@julia_m', 'pulse': 57, 'since': 'Mart 2026'},
-  ];
-
-  // Highlights
-  final List<Map<String, dynamic>> _highlights = [
-    {'icon': Icons.coffee_rounded, 'label': 'Kafeler', 'color': AppColors.modeUretkenlik},
-    {'icon': Icons.nightlife_rounded, 'label': 'Gece', 'color': AppColors.modeEglence},
-    {'icon': Icons.park_rounded, 'label': 'Parklar', 'color': AppColors.modeAcikAlan},
-    {'icon': Icons.restaurant_rounded, 'label': 'Yemek', 'color': AppColors.modeTopluluk},
-    {'icon': Icons.music_note_rounded, 'label': 'Müzik', 'color': AppColors.modeSosyal},
+  final List<Map<String, dynamic>> _highlights = const [
+    {
+      'icon': Icons.coffee_rounded,
+      'label': 'Kafeler',
+      'color': AppColors.modeUretkenlik,
+    },
+    {
+      'icon': Icons.nightlife_rounded,
+      'label': 'Gece',
+      'color': AppColors.modeEglence,
+    },
+    {
+      'icon': Icons.park_rounded,
+      'label': 'Parklar',
+      'color': AppColors.modeAcikAlan,
+    },
+    {
+      'icon': Icons.restaurant_rounded,
+      'label': 'Yemek',
+      'color': AppColors.modeTopluluk,
+    },
+    {
+      'icon': Icons.music_note_rounded,
+      'label': 'Müzik',
+      'color': AppColors.modeSosyal,
+    },
   ];
 
   @override
@@ -78,388 +81,905 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   void dispose() {
+    _followersSub?.cancel();
+    _followingSub?.cancel();
     _tabController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadProfile() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    if (uid.isEmpty) return;
+  Future<void> _loadProfile({bool silent = false}) async {
+    if (_isRefreshing) return;
+
+    _isRefreshing = true;
+    if (!silent && mounted) {
+      setState(() => _isLoading = true);
+    }
+
     try {
-      final data = await _firestoreService.getUserProfile(uid);
-      if (mounted) {
-        setState(() {
-          _profile = data;
-          _displayName = data?['displayName'] ?? '';
-          _bio = data?['bio'] ?? '';
-          _city = data?['city'] ?? 'Hamburg';
-          _website = data?['website'] ?? '';
-          _isLoading = false;
-        });
+      final user = await _firestoreService.getUser(_targetUid);
+
+      bool following = _isFollowing;
+      bool friend = _isFriend;
+
+      if (!_isMyProfile && _myUid.isNotEmpty) {
+        final results = await Future.wait([
+          _firestoreService.isFollowing(_myUid, _targetUid),
+          _firestoreService.isFriend(_myUid, _targetUid),
+        ]);
+
+        following = results[0];
+        friend = results[1];
       }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+
+      if (!mounted) return;
+
+      setState(() {
+        _user = user;
+        _isFollowing = following;
+        _isFriend = friend;
+        _isLoading = false;
+      });
+    } catch (e, st) {
+      debugPrint('Profil yükleme hatası: $e\n$st');
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+      _showSnackBar(
+        'Profil yüklenirken hata oluştu.',
+        color: AppColors.error,
+      );
+    } finally {
+      _isRefreshing = false;
     }
   }
 
+  Future<void> _loadFollowers() async {
+    if (_loadingFollowers) return;
+
+    setState(() => _loadingFollowers = true);
+    await _followersSub?.cancel();
+
+    _followersSub = _firestoreService.getFollowers(_targetUid).listen(
+      (users) {
+        if (!mounted) return;
+        setState(() {
+          _followersList = users;
+          _loadingFollowers = false;
+        });
+      },
+      onError: (e, st) {
+        debugPrint('Takipçiler yükleme hatası: $e\n$st');
+        if (!mounted) return;
+        setState(() => _loadingFollowers = false);
+      },
+    );
+  }
+
+  Future<void> _loadFollowing() async {
+    if (_loadingFollowing) return;
+
+    setState(() => _loadingFollowing = true);
+    await _followingSub?.cancel();
+
+    _followingSub = _firestoreService.getFollowing(_targetUid).listen(
+      (users) {
+        if (!mounted) return;
+        setState(() {
+          _followingList = users;
+          _loadingFollowing = false;
+        });
+      },
+      onError: (e, st) {
+        debugPrint('Takip edilenler yükleme hatası: $e\n$st');
+        if (!mounted) return;
+        setState(() => _loadingFollowing = false);
+      },
+    );
+  }
+
+  Future<void> _loadFriends() async {
+    if (_loadingFriends) return;
+
+    setState(() => _loadingFriends = true);
+
+    try {
+      final friends = await _firestoreService.getFriendsList(_targetUid);
+      if (!mounted) return;
+      setState(() {
+        _friendsList = friends;
+        _loadingFriends = false;
+      });
+      return;
+    } catch (e, st) {
+      debugPrint('Arkadaşlar yükleme hatası: $e\n$st');
+      if (!mounted) return;
+      setState(() => _loadingFriends = false);
+    }
+  }
+
+  Future<void> _toggleFollow() async {
+    if (_myUid.isEmpty || _targetUid.isEmpty) return;
+
+    final oldValue = _isFollowing;
+
+    setState(() => _isFollowing = !oldValue);
+
+    try {
+      if (oldValue) {
+        await _firestoreService.unfollowUser(_myUid, _targetUid);
+      } else {
+        await _firestoreService.followUser(_myUid, _targetUid);
+      }
+
+      await _loadProfile(silent: true);
+    } catch (e, st) {
+      debugPrint('Takip hatası: $e\n$st');
+      if (!mounted) return;
+
+      setState(() => _isFollowing = oldValue);
+      _showSnackBar(
+        'Takip işlemi sırasında hata oluştu.',
+        color: AppColors.error,
+      );
+    }
+  }
+
+  Future<void> _sendFriendRequest() async {
+    if (_myUid.isEmpty || _targetUid.isEmpty) return;
+
+    try {
+      await _firestoreService.sendFriendRequest(_myUid, _targetUid);
+      if (!mounted) return;
+
+      _showSnackBar(
+        'Arkadaşlık isteği gönderildi!',
+        color: AppColors.success,
+      );
+    } catch (e, st) {
+      debugPrint('Arkadaş isteği hatası: $e\n$st');
+      _showSnackBar(
+        'Arkadaşlık isteği gönderilemedi.',
+        color: AppColors.error,
+      );
+    }
+  }
+
+  void _showSnackBar(String message, {Color color = AppColors.primary}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   String _getModeName(String? mode) {
-    final modes = {
-      'kesif': 'Keşif', 'sakinlik': 'Sakinlik', 'sosyal': 'Sosyal',
-      'uretkenlik': 'Üretkenlik', 'eglence': 'Eğlence', 'acik_alan': 'Açık Alan',
-      'topluluk': 'Topluluk', 'aile': 'Aile & Çocuk',
+    const modes = {
+      'kesif': 'Keşif',
+      'sakinlik': 'Sakinlik',
+      'sosyal': 'Sosyal',
+      'uretkenlik': 'Üretkenlik',
+      'eglence': 'Eğlence',
+      'acik_alan': 'Açık Alan',
+      'topluluk': 'Topluluk',
+      'aile': 'Aile & Çocuk',
     };
     return modes[mode] ?? 'Keşif';
   }
 
   Color _getModeColor(String? mode) {
-    final colors = {
-      'kesif': AppColors.modeKesif, 'sakinlik': AppColors.modeSakinlik,
-      'sosyal': AppColors.modeSosyal, 'uretkenlik': AppColors.modeUretkenlik,
-      'eglence': AppColors.modeEglence, 'acik_alan': AppColors.modeAcikAlan,
-      'topluluk': AppColors.modeTopluluk, 'aile': AppColors.modeAcikAlan,
+    const colors = {
+      'kesif': AppColors.modeKesif,
+      'sakinlik': AppColors.modeSakinlik,
+      'sosyal': AppColors.modeSosyal,
+      'uretkenlik': AppColors.modeUretkenlik,
+      'eglence': AppColors.modeEglence,
+      'acik_alan': AppColors.modeAcikAlan,
+      'topluluk': AppColors.modeTopluluk,
+      'aile': AppColors.modeAcikAlan,
     };
     return colors[mode] ?? AppColors.modeKesif;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    final email = user?.email ?? '';
-    final username = email.split('@').first;
-    final interests = List<String>.from(_profile?['interests'] ?? []);
-    final mode = _profile?['mode'] ?? 'kesif';
-    final modeColor = _getModeColor(mode);
+  String _monthName(int month) {
+    const months = [
+      '',
+      'Ocak',
+      'Şubat',
+      'Mart',
+      'Nisan',
+      'Mayıs',
+      'Haziran',
+      'Temmuz',
+      'Ağustos',
+      'Eylül',
+      'Ekim',
+      'Kasım',
+      'Aralık',
+    ];
+    return months[month];
+  }
 
-    return Scaffold(
-      backgroundColor: AppColors.bgMain,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) {
-                return [
-                  // ── App Bar ──
-                  SliverAppBar(
-                    backgroundColor: AppColors.bgMain,
-                    elevation: 0,
-                    pinned: true,
-                    leading: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    title: Text('@$username',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-                    centerTitle: true,
-                    actions: [
-                      IconButton(icon: const Icon(Icons.qr_code_rounded, color: Colors.white, size: 22), onPressed: () {}),
-                      IconButton(
-                        icon: const Icon(Icons.settings_rounded, color: Colors.white, size: 22),
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
-                      ),
-                    ],
-                  ),
+  void _handleShareProfile() {
+    final username = _user?.username ?? '';
+    _showSnackBar('@$username profili paylaşım için hazır.');
+  }
 
-                  // ── Profil Header ──
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 8),
+  void _handleShowQr() {
+    _showSnackBar('QR profil özelliği hazır değil.');
+  }
 
-                          // ── Avatar + Stats ──
-                          Row(
-                            children: [
-                              // Avatar
-                              Stack(
-                                alignment: Alignment.bottomRight,
-                                children: [
-                                  Container(
-                                    width: 88,
-                                    height: 88,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: [AppColors.primary, AppColors.primary.withOpacity(0.5), AppColors.accentLight],
-                                      ),
-                                      boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 20)],
-                                    ),
-                                    child: Container(
-                                      margin: const EdgeInsets.all(3),
-                                      decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.bgMain),
-                                      child: Container(
-                                        margin: const EdgeInsets.all(2),
-                                        decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.bgCard),
-                                        child: const Icon(Icons.person_rounded, size: 36, color: AppColors.primary),
-                                      ),
-                                    ),
-                                  ),
-                                  // Online indicator
-                                  Container(
-                                    width: 18,
-                                    height: 18,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.success,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: AppColors.bgMain, width: 3),
-                                    ),
-                                  ),
-                                ],
-                              ),
+  void _handleOpenMessages() {
+    _showSnackBar('Mesaj ekranı entegrasyonu bağlanabilir.');
+  }
 
-                              const SizedBox(width: 20),
+  void _handleAddPeople() {
+    _showSnackBar('Kişi ekleme özelliği bağlanabilir.');
+  }
 
-                              // Takipçi / Takip / Arkadaş
-                              Expanded(
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    _buildStatTap('$_followers', 'Takipçi', () => _showPeopleSheet('Takipçiler', _followersList, false)),
-                                    _buildStatTap('$_following', 'Takip', () => _showPeopleSheet('Takip Edilenler', _followingList, false)),
-                                    _buildStatTap('$_friends', 'Arkadaş', () => _showPeopleSheet('Arkadaşlar', _friendsList, true)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 14),
-
-                          // ── İsim + Verified ──
-                          Row(
-                            children: [
-                              Text(
-                                _displayName.isNotEmpty ? _displayName : username,
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                width: 18, height: 18,
-                                decoration: const BoxDecoration(color: AppColors.modeSosyal, shape: BoxShape.circle),
-                                child: const Icon(Icons.check_rounded, size: 12, color: Colors.white),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 4),
-
-                          // ── Mod Badge + Pulse Score Inline ──
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: modeColor.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(width: 6, height: 6, decoration: BoxDecoration(color: modeColor, shape: BoxShape.circle)),
-                                    const SizedBox(width: 6),
-                                    Text(_getModeName(mode), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: modeColor)),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.favorite_rounded, size: 12, color: AppColors.primary),
-                                    const SizedBox(width: 4),
-                                    Text('$_pulseScore', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.primary)),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.05),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.explore_rounded, size: 12, color: Colors.white.withOpacity(0.4)),
-                                    const SizedBox(width: 4),
-                                    Text('$_placesVisited keşif', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.4))),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          // ── Bio ──
-                          if (_bio.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Text(_bio, style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.7), height: 1.4)),
-                            )
-                          else
-                            GestureDetector(
-                              onTap: () => _showEditProfileSheet(),
-                              child: Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Text('+ Bio ekle', style: TextStyle(fontSize: 14, color: AppColors.primary.withOpacity(0.6), fontWeight: FontWeight.w500)),
-                              ),
-                            ),
-
-                          // ── Konum + Website + Tarih ──
-                          Wrap(
-                            spacing: 16, runSpacing: 6,
-                            children: [
-                              if (_city.isNotEmpty) _buildInfoChip(Icons.location_on_rounded, _city),
-                              if (_website.isNotEmpty) _buildInfoChip(Icons.link_rounded, _website),
-                              _buildInfoChip(Icons.calendar_today_rounded, 'Nisan 2026\'da katıldı'),
-                            ],
-                          ),
-
-                          const SizedBox(height: 6),
-
-                          // ── Ortak Arkadaşlar ──
-                          GestureDetector(
-                            onTap: () => _showPeopleSheet('Ortak Arkadaşlar', _friendsList, true),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Row(
-                                children: [
-                                  // Mini avatar stack
-                                  SizedBox(
-                                    width: 52, height: 24,
-                                    child: Stack(
-                                      children: [
-                                        _buildMiniAvatar(0, AppColors.primary),
-                                        _buildMiniAvatar(14, AppColors.modeEglence),
-                                        _buildMiniAvatar(28, AppColors.modeSosyal),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${_friendsList.length} ortak arkadaş',
-                                    style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4), fontWeight: FontWeight.w500),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          // ── Butonlar ──
-                          Row(
-                            children: [
-                              Expanded(child: _buildActionButton('Profili Düzenle', Icons.edit_rounded, false, () => _showEditProfileSheet())),
-                              const SizedBox(width: 10),
-                              Expanded(child: _buildActionButton('Profili Paylaş', Icons.share_rounded, false, () {})),
-                              const SizedBox(width: 10),
-                              _buildIconActionButton(Icons.person_add_alt_rounded, () {}),
-                            ],
-                          ),
-
-                          const SizedBox(height: 18),
-
-                          // ── Highlights ──
-                          SizedBox(
-                            height: 82,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _highlights.length + 1,
-                              separatorBuilder: (_, __) => const SizedBox(width: 14),
-                              itemBuilder: (_, i) {
-                                if (i == 0) return _buildAddHighlight();
-                                final h = _highlights[i - 1];
-                                return _buildHighlight(h);
-                              },
-                            ),
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          // ── İlgi Alanları ──
-                          if (interests.isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            SizedBox(
-                              height: 32,
-                              child: ListView.separated(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: interests.length,
-                                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                                itemBuilder: (_, i) {
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(16)),
-                                    child: Text(interests[i], style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.45))),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // ── Tab Bar ──
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _StickyTabDelegate(
-                      child: Container(
-                        color: AppColors.bgMain,
-                        child: TabBar(
-                          controller: _tabController,
-                          indicatorColor: AppColors.primary,
-                          indicatorWeight: 2,
-                          labelColor: Colors.white,
-                          unselectedLabelColor: Colors.white.withOpacity(0.25),
-                          dividerColor: Colors.white.withOpacity(0.06),
-                          tabs: const [
-                            Tab(icon: Icon(Icons.grid_on_rounded, size: 22)),
-                            Tab(icon: Icon(Icons.play_circle_rounded, size: 22)),
-                            Tab(icon: Icon(Icons.bookmark_rounded, size: 22)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ];
-              },
-              body: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildEmptyGrid(Icons.camera_alt_rounded, 'Henüz paylaşım yok', 'Keşiflerini fotoğraf ve kısa videolarla paylaş.', 'İlk Paylaşımını Yap'),
-                  _buildEmptyGrid(Icons.play_circle_rounded, 'Henüz video yok', 'Şehir anlarını kısa videolarla paylaş.', 'Video Çek'),
-                  _buildEmptyGrid(Icons.bookmark_rounded, 'Kayıtlı içerik yok', 'Beğendiğin mekanları ve önerileri kaydet.', null),
-                ],
-              ),
-            ),
+  void _handleReportUser() {
+    Navigator.pop(context);
+    _showSnackBar(
+      'Şikayet işlemi kayıt altına alınabilir.',
+      color: AppColors.warning,
     );
   }
 
-  // ══════════════════════════════════════
-  // WIDGETS
-  // ══════════════════════════════════════
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.bgMain,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
+
+    final user = _user;
+    if (user == null) {
+      return Scaffold(
+        backgroundColor: AppColors.bgMain,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Text(
+            'Kullanıcı bulunamadı',
+            style: TextStyle(color: Colors.white.withOpacity(0.5)),
+          ),
+        ),
+      );
+    }
+
+    final modeColor = _getModeColor(user.mode);
+
+    return Scaffold(
+      backgroundColor: AppColors.bgMain,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverAppBar(
+              backgroundColor: AppColors.bgMain,
+              elevation: 0,
+              pinned: true,
+              leading: IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: Text(
+                '@${user.username}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              centerTitle: true,
+              actions: [
+                if (!_isMyProfile)
+                  IconButton(
+                    icon: const Icon(
+                      Icons.more_vert_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    onPressed: _showUserOptionsSheet,
+                  ),
+                if (_isMyProfile) ...[
+                  IconButton(
+                    icon: const Icon(
+                      Icons.qr_code_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    onPressed: _handleShowQr,
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.settings_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsScreen(),
+                        ),
+                      );
+                      await _loadProfile();
+                    },
+                  ),
+                ],
+              ],
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.bottomRight,
+                          children: [
+                            _buildProfileAvatar(user, modeColor),
+                            if (user.isOnline)
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 18,
+                                  height: 18,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.success,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.bgMain,
+                                      width: 3,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (_isMyProfile)
+                              Positioned(
+                                right: -2,
+                                bottom: -2,
+                                child: GestureDetector(
+                                  onTap: () => _showSnackBar(
+                                    'Fotoğraf yükleme bağlanabilir.',
+                                  ),
+                                  child: Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: AppColors.bgMain,
+                                        width: 2.5,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.camera_alt_rounded,
+                                      size: 13,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildStatTap(
+                                '${user.followersCount}',
+                                'Takipçi',
+                                () async {
+                                  await _loadFollowers();
+                                  if (!mounted) return;
+                                  _showPeopleSheet('Takipçiler', 'followers');
+                                },
+                              ),
+                              _buildStatTap(
+                                '${user.followingCount}',
+                                'Takip',
+                                () async {
+                                  await _loadFollowing();
+                                  if (!mounted) return;
+                                  _showPeopleSheet(
+                                    'Takip Edilenler',
+                                    'following',
+                                  );
+                                },
+                              ),
+                              _buildStatTap(
+                                '${user.friendsCount}',
+                                'Arkadaş',
+                                () async {
+                                  await _loadFriends();
+                                  if (!mounted) return;
+                                  _showPeopleSheet('Arkadaşlar', 'friends');
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            user.hasProfile ? user.displayName : user.username,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          width: 18,
+                          height: 18,
+                          decoration: const BoxDecoration(
+                            color: AppColors.modeSosyal,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.check_rounded,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _buildPill(
+                          color: modeColor.withOpacity(0.12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: modeColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _getModeName(user.mode),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: modeColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _buildPill(
+                          color: AppColors.primary.withOpacity(0.12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.favorite_rounded,
+                                size: 12,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${user.pulseScore}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _buildPill(
+                          color: Colors.white.withOpacity(0.05),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.explore_rounded,
+                                size: 12,
+                                color: Colors.white.withOpacity(0.4),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${user.placesVisited} keşif',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withOpacity(0.4),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (user.bio.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          user.bio,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white.withOpacity(0.7),
+                            height: 1.4,
+                          ),
+                        ),
+                      )
+                    else if (_isMyProfile)
+                      GestureDetector(
+                        onTap: _showEditProfileSheet,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            '+ Bio ekle',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.primary.withOpacity(0.6),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 6,
+                      children: [
+                        if (user.city.isNotEmpty)
+                          _buildInfoChip(Icons.location_on_rounded, user.city),
+                        if (user.website.isNotEmpty)
+                          _buildInfoChip(Icons.link_rounded, user.website),
+                        if (user.createdAt != null)
+                          _buildInfoChip(
+                            Icons.calendar_today_rounded,
+                            '${_monthName(user.createdAt!.month)} ${user.createdAt!.year}\'de katıldı',
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    if (!_isMyProfile && _friendsList.isNotEmpty)
+                      GestureDetector(
+                        onTap: () => _showPeopleSheet(
+                          'Ortak Arkadaşlar',
+                          'friends',
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 52,
+                                height: 24,
+                                child: Stack(
+                                  children: [
+                                    _buildMiniAvatar(0, AppColors.primary),
+                                    _buildMiniAvatar(
+                                      14,
+                                      AppColors.modeEglence,
+                                    ),
+                                    _buildMiniAvatar(
+                                      28,
+                                      AppColors.modeSosyal,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${_friendsList.length} ortak arkadaş',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white.withOpacity(0.4),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 10),
+                    if (_isMyProfile)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionButton(
+                              'Profili Düzenle',
+                              Icons.edit_rounded,
+                              false,
+                              _showEditProfileSheet,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _buildActionButton(
+                              'Profili Paylaş',
+                              Icons.share_rounded,
+                              false,
+                              _handleShareProfile,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          _buildIconActionButton(
+                            Icons.person_add_alt_rounded,
+                            _handleAddPeople,
+                          ),
+                        ],
+                      )
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionButton(
+                              _isFollowing ? 'Takipten Çık' : 'Takip Et',
+                              _isFollowing
+                                  ? Icons.person_remove_rounded
+                                  : Icons.person_add_rounded,
+                              !_isFollowing,
+                              _toggleFollow,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _buildActionButton(
+                              _isFriend ? 'Mesaj' : 'Arkadaş Ekle',
+                              _isFriend
+                                  ? Icons.chat_rounded
+                                  : Icons.group_add_rounded,
+                              false,
+                              _isFriend
+                                  ? _handleOpenMessages
+                                  : _sendFriendRequest,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          _buildIconActionButton(
+                            Icons.more_horiz_rounded,
+                            _showUserOptionsSheet,
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      height: 82,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _highlights.length + (_isMyProfile ? 1 : 0),
+                        separatorBuilder: (_, __) => const SizedBox(width: 14),
+                        itemBuilder: (_, i) {
+                          if (_isMyProfile && i == 0) {
+                            return _buildAddHighlight();
+                          }
+                          final h = _highlights[_isMyProfile ? i - 1 : i];
+                          return _buildHighlight(h);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    if (user.interests.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        height: 32,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: user.interests.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (_, i) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Text(
+                              user.interests[i],
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withOpacity(0.45),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _StickyTabDelegate(
+                child: Container(
+                  color: AppColors.bgMain,
+                  child: TabBar(
+                    controller: _tabController,
+                    indicatorColor: AppColors.primary,
+                    indicatorWeight: 2,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.white.withOpacity(0.25),
+                    dividerColor: Colors.white.withOpacity(0.06),
+                    tabs: const [
+                      Tab(icon: Icon(Icons.grid_on_rounded, size: 22)),
+                      Tab(icon: Icon(Icons.play_circle_rounded, size: 22)),
+                      Tab(icon: Icon(Icons.bookmark_rounded, size: 22)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ];
+        },
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildEmptyGrid(
+              Icons.camera_alt_rounded,
+              'Henüz paylaşım yok',
+              'Keşiflerini fotoğraf ve kısa videolarla paylaş.',
+              _isMyProfile ? 'İlk Paylaşımını Yap' : null,
+            ),
+            _buildEmptyGrid(
+              Icons.play_circle_rounded,
+              'Henüz video yok',
+              'Şehir anlarını kısa videolarla paylaş.',
+              _isMyProfile ? 'Video Çek' : null,
+            ),
+            _buildEmptyGrid(
+              Icons.bookmark_rounded,
+              'Kayıtlı içerik yok',
+              'Beğendiğin mekanları ve önerileri kaydet.',
+              null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileAvatar(UserModel user, Color modeColor) {
+    return Container(
+      width: 88,
+      height: 88,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [modeColor, modeColor.withOpacity(0.5), AppColors.accentLight],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: modeColor.withOpacity(0.3),
+            blurRadius: 20,
+          ),
+        ],
+      ),
+      child: Container(
+        margin: const EdgeInsets.all(3),
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.bgMain,
+        ),
+        child: Container(
+          margin: const EdgeInsets.all(2),
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.bgCard,
+          ),
+          child: user.profilePhotoUrl.isNotEmpty
+              ? ClipOval(
+                  child: Image.network(
+                    user.profilePhotoUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.person_rounded,
+                      size: 36,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                )
+              : const Icon(
+                  Icons.person_rounded,
+                  size: 36,
+                  color: AppColors.primary,
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPill({required Color color, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: child,
+    );
+  }
 
   Widget _buildStatTap(String value, String label, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
-          Text(value, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Colors.white)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.35))),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withOpacity(0.35),
+            ),
+          ),
         ],
       ),
     );
@@ -469,7 +989,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Positioned(
       left: left,
       child: Container(
-        width: 24, height: 24,
+        width: 24,
+        height: 24,
         decoration: BoxDecoration(
           color: color.withOpacity(0.3),
           shape: BoxShape.circle,
@@ -486,12 +1007,26 @@ class _ProfileScreenState extends State<ProfileScreen>
       children: [
         Icon(icon, size: 14, color: Colors.white.withOpacity(0.3)),
         const SizedBox(width: 4),
-        Text(text, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.4))),
+        Flexible(
+          child: Text(
+            text,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white.withOpacity(0.4),
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildActionButton(String label, IconData icon, bool isPrimary, VoidCallback onTap) {
+  Widget _buildActionButton(
+    String label,
+    IconData icon,
+    bool isPrimary,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -499,14 +1034,34 @@ class _ProfileScreenState extends State<ProfileScreen>
         decoration: BoxDecoration(
           color: isPrimary ? AppColors.primary : AppColors.bgCard,
           borderRadius: BorderRadius.circular(10),
-          border: isPrimary ? null : Border.all(color: Colors.white.withOpacity(0.08)),
+          border: isPrimary
+              ? null
+              : Border.all(color: Colors.white.withOpacity(0.08)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 15, color: isPrimary ? Colors.white : Colors.white.withOpacity(0.6)),
+            Icon(
+              icon,
+              size: 15,
+              color: isPrimary
+                  ? Colors.white
+                  : Colors.white.withOpacity(0.6),
+            ),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isPrimary ? Colors.white : Colors.white.withOpacity(0.7))),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isPrimary
+                      ? Colors.white
+                      : Colors.white.withOpacity(0.7),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -517,51 +1072,102 @@ class _ProfileScreenState extends State<ProfileScreen>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 40, height: 40,
-        decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withOpacity(0.08))),
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
         child: Icon(icon, size: 18, color: Colors.white.withOpacity(0.5)),
       ),
     );
   }
 
   Widget _buildAddHighlight() {
-    return Column(
-      children: [
-        Container(
-          width: 60, height: 60,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.bgCard, border: Border.all(color: Colors.white.withOpacity(0.1))),
-          child: Icon(Icons.add_rounded, size: 26, color: Colors.white.withOpacity(0.4)),
-        ),
-        const SizedBox(height: 6),
-        Text('Yeni', style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.35))),
-      ],
+    return GestureDetector(
+      onTap: () => _showSnackBar('Yeni highlight ekleme bağlanabilir.'),
+      child: Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.bgCard,
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: Icon(
+              Icons.add_rounded,
+              size: 26,
+              color: Colors.white.withOpacity(0.4),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Yeni',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.white.withOpacity(0.35),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildHighlight(Map<String, dynamic> h) {
     final color = h['color'] as Color;
-    return Column(
-      children: [
-        Container(
-          width: 60, height: 60,
-          decoration: BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [color, color.withOpacity(0.5)])),
-          child: Container(
-            margin: const EdgeInsets.all(2.5),
-            decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.bgMain),
+    return GestureDetector(
+      onTap: () => _showSnackBar('${h['label']} highlight açılabilir.'),
+      child: Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [color, color.withOpacity(0.5)],
+              ),
+            ),
             child: Container(
-              margin: const EdgeInsets.all(2),
-              decoration: BoxDecoration(shape: BoxShape.circle, color: color.withOpacity(0.1)),
-              child: Icon(h['icon'] as IconData, size: 22, color: color),
+              margin: const EdgeInsets.all(2.5),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.bgMain,
+              ),
+              child: Container(
+                margin: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withOpacity(0.1),
+                ),
+                child: Icon(h['icon'] as IconData, size: 22, color: color),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 6),
-        Text(h['label'] as String, style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.45))),
-      ],
+          const SizedBox(height: 6),
+          Text(
+            h['label'] as String,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.white.withOpacity(0.45),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildEmptyGrid(IconData icon, String title, String subtitle, String? buttonLabel) {
+  Widget _buildEmptyGrid(
+    IconData icon,
+    String title,
+    String subtitle,
+    String? buttonLabel,
+  ) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -569,24 +1175,62 @@ class _ProfileScreenState extends State<ProfileScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 72, height: 72,
-              decoration: BoxDecoration(color: AppColors.bgCard, shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.06))),
-              child: Icon(icon, size: 32, color: Colors.white.withOpacity(0.15)),
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.bgCard,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
+              ),
+              child: Icon(
+                icon,
+                size: 32,
+                color: Colors.white.withOpacity(0.15),
+              ),
             ),
             const SizedBox(height: 16),
-            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text(subtitle, textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.3), height: 1.4)),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.white.withOpacity(0.3),
+                height: 1.4,
+              ),
+            ),
             if (buttonLabel != null) ...[
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () =>
+                    _showSnackBar('$buttonLabel özelliği bağlanabilir.'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary, foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: 0, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
-                child: Text(buttonLabel, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                child: Text(
+                  buttonLabel,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ],
@@ -595,246 +1239,686 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ══════════════════════════════════════
-  // BOTTOM SHEETS
-  // ══════════════════════════════════════
+  void _showPeopleSheet(String title, String type) {
+    final searchCtrl = TextEditingController();
+    List<UserModel> filtered = [];
+    bool initialized = false;
 
-  void _showPeopleSheet(String title, List<Map<String, dynamic>> people, bool isFriends) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
-          builder: (_, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: AppColors.bgCard,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                children: [
-                  // Handle
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12, bottom: 8),
-                    child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(2))),
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            List<UserModel> source;
+            bool loading;
+
+            switch (type) {
+              case 'followers':
+                source = _followersList;
+                loading = _loadingFollowers;
+                break;
+              case 'following':
+                source = _followingList;
+                loading = _loadingFollowing;
+                break;
+              case 'friends':
+                source = _friendsList;
+                loading = _loadingFriends;
+                break;
+              default:
+                source = [];
+                loading = false;
+            }
+
+            if (!initialized) {
+              filtered = List<UserModel>.from(source);
+              initialized = true;
+            }
+
+            void applyFilter(String query) {
+              final q = query.trim().toLowerCase();
+              setModalState(() {
+                filtered = source.where((person) {
+                  final displayName = person.displayName.toLowerCase();
+                  final username = person.username.toLowerCase();
+                  return displayName.contains(q) || username.contains(q);
+                }).toList();
+              });
+            }
+
+            if (searchCtrl.text.isNotEmpty) {
+              filtered = source.where((person) {
+                final q = searchCtrl.text.trim().toLowerCase();
+                final displayName = person.displayName.toLowerCase();
+                final username = person.username.toLowerCase();
+                return displayName.contains(q) || username.contains(q);
+              }).toList();
+            } else {
+              filtered = List<UserModel>.from(source);
+            }
+
+            return DraggableScrollableSheet(
+              initialChildSize: 0.7,
+              minChildSize: 0.4,
+              maxChildSize: 0.9,
+              builder: (_, scrollController) {
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: AppColors.bgCard,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                   ),
-                  // Başlık + Arama
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                    child: Column(
-                      children: [
-                        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
-                        const SizedBox(height: 12),
-                        Container(
-                          height: 40,
-                          decoration: BoxDecoration(color: AppColors.bgMain, borderRadius: BorderRadius.circular(12)),
-                          child: TextField(
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
-                            decoration: InputDecoration(
-                              hintText: 'Ara...',
-                              hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 14),
-                              prefixIcon: Icon(Icons.search_rounded, size: 18, color: Colors.white.withOpacity(0.2)),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                            ),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12, bottom: 8),
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                        child: Column(
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: AppColors.bgMain,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: TextField(
+                                controller: searchCtrl,
+                                onChanged: applyFilter,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Ara...',
+                                  hintStyle: TextStyle(
+                                    color: Colors.white.withOpacity(0.2),
+                                    fontSize: 14,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.search_rounded,
+                                    size: 18,
+                                    color: Colors.white.withOpacity(0.2),
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildPeopleListView(
+                          filtered,
+                          loading,
+                          type == 'friends',
+                          scrollController,
+                        ),
+                      ),
+                    ],
                   ),
-                  // Liste
-                  Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: people.length,
-                      itemBuilder: (_, i) {
-                        final p = people[i];
-                        return _buildPersonTile(p, isFriends);
-                      },
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             );
           },
         );
       },
+    ).whenComplete(searchCtrl.dispose);
+  }
+
+  Widget _buildPeopleListView(
+    List<UserModel> people,
+    bool loading,
+    bool isFriends,
+    ScrollController scrollController,
+  ) {
+    if (loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
+    }
+
+    if (people.isEmpty) {
+      return Center(
+        child: Text(
+          'Henüz kimse yok',
+          style: TextStyle(color: Colors.white.withOpacity(0.3)),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      controller: scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: people.length,
+      itemBuilder: (_, i) => _buildPersonTile(people[i], isFriends),
     );
   }
 
-  Widget _buildPersonTile(Map<String, dynamic> person, bool isFriends) {
-    final isMutual = person['mutual'] ?? false;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.bgMain.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          // Avatar
-          Container(
-            width: 46, height: 46,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.primary.withOpacity(0.1),
-              border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-            ),
-            child: const Icon(Icons.person_rounded, size: 22, color: AppColors.primary),
+  Widget _buildPersonTile(UserModel person, bool isFriends) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProfileScreen(userId: person.uid),
           ),
-          const SizedBox(width: 12),
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.bgMain.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withOpacity(0.1),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.2),
+                ),
+              ),
+              child: person.profilePhotoUrl.isNotEmpty
+                  ? ClipOval(
+                      child: Image.network(
+                        person.profilePhotoUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.person_rounded,
+                          size: 22,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    )
+                  : const Icon(
+                      Icons.person_rounded,
+                      size: 22,
+                      color: AppColors.primary,
+                    ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    person.hasProfile ? person.displayName : person.username,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '@${person.username}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(person['name'], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                    if (isMutual && !isFriends) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(color: AppColors.modeSosyal.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
-                        child: const Text('Karşılıklı', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.modeSosyal)),
+                    Icon(
+                      Icons.favorite_rounded,
+                      size: 10,
+                      color: AppColors.primary.withOpacity(0.5),
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      '${person.pulseScore}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary.withOpacity(0.7),
                       ),
-                    ],
+                    ),
                   ],
                 ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Text(person['username'], style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.35))),
-                    if (isFriends && person['since'] != null) ...[
-                      Text('  •  ', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.2))),
-                      Text(person['since'], style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.25))),
-                    ],
-                  ],
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isFriends
+                        ? Colors.white.withOpacity(0.06)
+                        : AppColors.primary.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    isFriends ? 'Mesaj' : 'Profil',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: isFriends
+                          ? Colors.white.withOpacity(0.5)
+                          : AppColors.primary,
+                    ),
+                  ),
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showUserOptionsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _optionRow(
+              Icons.share_rounded,
+              'Profili Paylaş',
+              Colors.white.withOpacity(0.5),
+              () {
+                Navigator.pop(context);
+                _handleShareProfile();
+              },
+            ),
+            _optionRow(
+              Icons.report_rounded,
+              'Şikayet Et',
+              AppColors.warning,
+              _handleReportUser,
+            ),
+            _optionRow(
+              Icons.block_rounded,
+              'Engelle',
+              AppColors.error,
+              () {
+                Navigator.pop(context);
+                _showBlockDialog();
+              },
+            ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _optionRow(
+    IconData icon,
+    String title,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.bgMain.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 14),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showBlockDialog() {
+    final name = _user?.hasProfile == true
+        ? _user!.displayName
+        : _user?.username ?? 'Bu kullanıcı';
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Engelle',
+          style: TextStyle(
+            color: AppColors.error,
+            fontWeight: FontWeight.w700,
           ),
-          // Pulse + Action
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.favorite_rounded, size: 10, color: AppColors.primary.withOpacity(0.5)),
-                  const SizedBox(width: 3),
-                  Text('${person['pulse']}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary.withOpacity(0.7))),
-                ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$name engellenecek:',
+              style: TextStyle(color: Colors.white.withOpacity(0.5)),
+            ),
+            const SizedBox(height: 12),
+            _blockInfo('Tüm mesajlar silinir'),
+            _blockInfo('Seni göremez, sen onu göremezsin'),
+            _blockInfo('Takip ve arkadaşlık kaldırılır'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Vazgeç',
+              style: TextStyle(color: Colors.white.withOpacity(0.4)),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await _firestoreService.blockUser(_myUid, _targetUid);
+                if (!mounted) return;
+                Navigator.pop(context);
+              } catch (e, st) {
+                debugPrint('Engelleme hatası: $e\n$st');
+                _showSnackBar(
+                  'Kullanıcı engellenemedi.',
+                  color: AppColors.error,
+                );
+              }
+            },
+            child: const Text(
+              'Engelle',
+              style: TextStyle(
+                color: AppColors.error,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isFriends ? Colors.white.withOpacity(0.06) : AppColors.primary.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  isFriends ? 'Mesaj' : (isMutual ? 'Arkadaş' : 'Takip Et'),
-                  style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w700,
-                    color: isFriends ? Colors.white.withOpacity(0.5) : AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ══════════════════════════════════════
-  // EDIT PROFILE
-  // ══════════════════════════════════════
-
-  void _showEditProfileSheet() {
-    final nameCtrl = TextEditingController(text: _displayName);
-    final bioCtrl = TextEditingController(text: _bio);
-    final cityCtrl = TextEditingController(text: _city);
-    final webCtrl = TextEditingController(text: _website);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(context).viewInsets.bottom + 24),
-          decoration: const BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(2)))),
-                const SizedBox(height: 20),
-                const Text('Profili Düzenle', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
-                const SizedBox(height: 20),
-                _buildEditField('Ad Soyad', nameCtrl, Icons.person_rounded),
-                _buildEditField('Hakkında', bioCtrl, Icons.info_outline_rounded, maxLines: 3),
-                _buildEditField('Şehir', cityCtrl, Icons.location_on_rounded),
-                _buildEditField('Website', webCtrl, Icons.link_rounded),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity, height: 50,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-                      if (uid.isNotEmpty) {
-                        await _firestoreService.updateProfile(uid, {
-                          'displayName': nameCtrl.text.trim(), 'bio': bioCtrl.text.trim(),
-                          'city': cityCtrl.text.trim(), 'website': webCtrl.text.trim(),
-                        });
-                        setState(() {
-                          _displayName = nameCtrl.text.trim(); _bio = bioCtrl.text.trim();
-                          _city = cityCtrl.text.trim(); _website = webCtrl.text.trim();
-                        });
-                      }
-                      if (mounted) Navigator.pop(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary, foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), elevation: 0,
-                    ),
-                    child: const Text('Kaydet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                  ),
-                ),
-              ],
+  Widget _blockInfo(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.check_circle_rounded,
+            size: 14,
+            color: AppColors.primary.withOpacity(0.5),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withOpacity(0.45),
+                height: 1.3,
+              ),
             ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  Widget _buildEditField(String label, TextEditingController controller, IconData icon, {int maxLines = 1}) {
+  void _showEditProfileSheet() {
+  final nameCtrl = TextEditingController(text: _user?.displayName ?? '');
+  final bioCtrl = TextEditingController(text: _user?.bio ?? '');
+  final cityCtrl = TextEditingController(text: _user?.city ?? '');
+  final webCtrl = TextEditingController(text: _user?.website ?? '');
+
+  bool isSaving = false;
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) {
+      return StatefulBuilder(
+        builder: (context, setSheetState) {
+          Future<void> handleSave() async {
+            if (isSaving) return;
+
+            final displayName = nameCtrl.text.trim();
+            final bio = bioCtrl.text.trim();
+            final city = cityCtrl.text.trim();
+            final website = webCtrl.text.trim();
+
+            setSheetState(() => isSaving = true);
+
+            try {
+              await _firestoreService.updateProfile(_targetUid, {
+                'displayName': displayName,
+                'bio': bio,
+                'city': city,
+                'website': website,
+              });
+
+              if (!mounted) return;
+
+              Navigator.of(sheetContext).pop();
+
+              await _loadProfile(silent: true);
+
+              if (!mounted) return;
+              _showSnackBar(
+                'Profil başarıyla güncellendi.',
+                color: AppColors.success,
+              );
+            } catch (e, st) {
+              debugPrint('Profil güncelleme hatası: $e\n$st');
+
+              if (mounted) {
+                _showSnackBar(
+                  'Profil güncellenemedi.',
+                  color: AppColors.error,
+                );
+              }
+
+              if (Navigator.of(sheetContext).canPop()) {
+                setSheetState(() => isSaving = false);
+              }
+            }
+          }
+
+          return Container(
+            padding: EdgeInsets.fromLTRB(
+              24,
+              20,
+              24,
+              MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+            ),
+            decoration: const BoxDecoration(
+              color: AppColors.bgCard,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Profili Düzenle',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildEditField('Ad Soyad', nameCtrl, Icons.person_rounded),
+                  _buildEditField(
+                    'Hakkında',
+                    bioCtrl,
+                    Icons.info_outline_rounded,
+                    maxLines: 3,
+                  ),
+                  _buildEditField('Şehir', cityCtrl, Icons.location_on_rounded),
+                  _buildEditField('Website', webCtrl, Icons.link_rounded),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: isSaving ? null : handleSave,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor:
+                            AppColors.primary.withOpacity(0.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Kaydet',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  ).whenComplete(() {
+    nameCtrl.dispose();
+    bioCtrl.dispose();
+    cityCtrl.dispose();
+    webCtrl.dispose();
+  });
+}
+
+  Widget _buildEditField(
+    String label,
+    TextEditingController controller,
+    IconData icon, {
+    int maxLines = 1,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.4))),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withOpacity(0.4),
+            ),
+          ),
           const SizedBox(height: 6),
           Container(
-            decoration: BoxDecoration(color: AppColors.bgMain, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.06))),
+            decoration: BoxDecoration(
+              color: AppColors.bgMain,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.06)),
+            ),
             child: TextField(
-              controller: controller, maxLines: maxLines,
+              controller: controller,
+              maxLines: maxLines,
               style: const TextStyle(color: Colors.white, fontSize: 15),
               decoration: InputDecoration(
-                prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.2), size: 18),
-                border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                prefixIcon: Icon(
+                  icon,
+                  color: Colors.white.withOpacity(0.2),
+                  size: 18,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 14,
+                ),
               ),
             ),
           ),
@@ -846,9 +1930,20 @@ class _ProfileScreenState extends State<ProfileScreen>
 
 class _StickyTabDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
+
   _StickyTabDelegate({required this.child});
-  @override double get minExtent => 48;
-  @override double get maxExtent => 48;
-  @override Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => child;
-  @override bool shouldRebuild(covariant _StickyTabDelegate oldDelegate) => false;
+
+  @override
+  double get minExtent => 48;
+
+  @override
+  double get maxExtent => 48;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(covariant _StickyTabDelegate oldDelegate) => false;
 }
