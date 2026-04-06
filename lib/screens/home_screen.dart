@@ -9,6 +9,7 @@ import '../services/firestore_service.dart';
 import 'signal_screen.dart';
 import 'profile_screen.dart';
 import 'discover_screen.dart';
+import 'inbox_screen.dart';
 
 final Point _kDefaultMapCenter = Point(coordinates: Position(9.9872, 53.5488));
 
@@ -324,12 +325,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   );
                 }),
                 const SizedBox(height: 8),
-                _buildMapButton(Icons.compass_calibration_rounded, () {
+                _buildMapButton(Icons.compass_calibration_rounded, () 
+                {
+                  
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const DiscoverScreen()),
                   );
                 }),
+                const SizedBox(height: 8),
+                Stack(
+                  children: [
+                    _buildMapButton(Icons.chat_rounded, () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const InboxScreen()),
+                      );
+                    }),
+                    Positioned(
+                      top: 0, right: 0,
+                      child: Container(
+                        width: 16, height: 16,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.bgMain, width: 2),
+                        ),
+                        child: const Center(child: Text('3', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.white))),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
