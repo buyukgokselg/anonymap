@@ -11,6 +11,8 @@ import 'signal_screen.dart';
 import 'profile_screen.dart';
 import 'discover_screen.dart';
 import 'inbox_screen.dart';
+import '../widgets/animated_press.dart';
+import '../widgets/page_transitions.dart';
 
 final Point _kDefaultMapCenter = Point(coordinates: Position(9.9872, 53.5488));
 
@@ -31,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   DateTime _lastMapFlyTo = DateTime.fromMillisecondsSinceEpoch(0);
   bool _showMap = false;
   bool _mapStyleReady = false;
+  bool _heatmapAdded = false;
   bool _appliedInitialCamera = false;
 
   int _pulseScore = 72;
@@ -53,8 +56,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    _modeTransitionController = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
-    _modeTransitionAnim = CurvedAnimation(parent: _modeTransitionController, curve: Curves.easeOut);
+    _modeTransitionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _modeTransitionAnim = CurvedAnimation(
+      parent: _modeTransitionController,
+      curve: Curves.easeOut,
+    );
 
     _startHomeFlow();
 
@@ -62,12 +71,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final maxScroll = _suggestionsController.position.maxScrollExtent;
       final currentScroll = _suggestionsController.offset;
       final shouldShow = currentScroll < maxScroll - 20;
-      if (shouldShow != _showScrollHint) setState(() => _showScrollHint = shouldShow);
+      if (shouldShow != _showScrollHint)
+        setState(() => _showScrollHint = shouldShow);
     });
   }
 
   Future<void> _startHomeFlow() async {
-    try { await _locationService.requestPermission(); } catch (e, st) { debugPrint('Konum izni: $e\n$st'); }
+    try {
+      await _locationService.requestPermission();
+    } catch (e, st) {
+      debugPrint('Konum izni: $e\n$st');
+    }
     if (!mounted) return;
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
@@ -77,11 +91,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!mounted) return;
       _currentPosition = pos;
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-      if (uid.isNotEmpty) _firestoreService.updateLocation(uid, pos.latitude, pos.longitude);
+      if (uid.isNotEmpty)
+        _firestoreService.updateLocation(uid, pos.latitude, pos.longitude);
 
-      if (_mapboxMap != null && _mapStyleReady && DateTime.now().difference(_lastMapFlyTo).inSeconds > 30) {
+      if (_mapboxMap != null &&
+          _mapStyleReady &&
+          DateTime.now().difference(_lastMapFlyTo).inSeconds > 30) {
         _lastMapFlyTo = DateTime.now();
-        _mapboxMap!.flyTo(CameraOptions(center: Point(coordinates: Position(pos.longitude, pos.latitude)), zoom: 14), MapAnimationOptions(duration: 1500));
+        _mapboxMap!.flyTo(
+          CameraOptions(
+            center: Point(coordinates: Position(pos.longitude, pos.latitude)),
+            zoom: 14,
+          ),
+          MapAnimationOptions(duration: 1500),
+        );
       }
     });
   }
@@ -91,7 +114,121 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _appliedInitialCamera = true;
     final pos = _currentPosition;
     if (pos != null) {
-      _mapboxMap!.setCamera(CameraOptions(center: Point(coordinates: Position(pos.longitude, pos.latitude)), zoom: 14));
+      _mapboxMap!.setCamera(
+        CameraOptions(
+          center: Point(coordinates: Position(pos.longitude, pos.latitude)),
+          zoom: 14,
+        ),
+      );
+    }
+  }
+
+  Future<void> _addHeatmapLayer() async {
+    if (_mapboxMap == null || _heatmapAdded) return;
+    _heatmapAdded = true;
+
+    try {
+      final geoJsonData = _generateDensityPoints();
+
+      await _mapboxMap!.style.addSource(
+        GeoJsonSource(id: 'density-source', data: geoJsonData),
+      );
+
+      // Büyük, bulanık daireler — heatmap efekti
+      await _mapboxMap!.style.addLayer(
+        CircleLayer(
+          id: 'density-glow',
+          sourceId: 'density-source',
+          circleRadius: 45.0,
+          circleColor: _colorToRgba(_currentMode.color, 0.15),
+          circleBlur: 1.0,
+          circleOpacity: 0.6,
+        ),
+      );
+
+      // Orta katman
+      await _mapboxMap!.style.addLayer(
+        CircleLayer(
+          id: 'density-mid',
+          sourceId: 'density-source',
+          circleRadius: 25.0,
+          circleColor: _colorToRgba(_currentMode.color, 0.3),
+          circleBlur: 0.8,
+          circleOpacity: 0.5,
+        ),
+      );
+
+      // Küçük parlak noktalar — merkez
+      await _mapboxMap!.style.addLayer(
+        CircleLayer(
+          id: 'density-core',
+          sourceId: 'density-source',
+          circleRadius: 8.0,
+          circleColor: _colorToRgba(_currentMode.color, 0.7),
+          circleBlur: 0.3,
+          circleOpacity: 0.8,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Heatmap ekleme hatası: $e');
+    }
+  }
+
+  int _colorToRgba(Color c, double opacity) {
+    final a = (opacity * 255).round();
+    return (a << 24) | (c.red << 16) | (c.green << 8) | c.blue;
+  }
+
+  String _generateDensityPoints() {
+    final mode = _currentMode;
+    final features = <String>[];
+
+    for (final s in mode.suggestions) {
+      final lat = s['lat'] as double;
+      final lng = s['lng'] as double;
+      final pulse = s['pulse'] as int;
+      final weight = (pulse / 100).clamp(0.1, 1.0);
+
+      features.add(
+        '{"type":"Feature","geometry":{"type":"Point","coordinates":[$lng,$lat]},"properties":{"weight":$weight}}',
+      );
+
+      final count = (pulse / 12).round();
+      for (int i = 0; i < count; i++) {
+        final offsetLat = (i.isEven ? 1 : -1) * (0.0008 + (i * 0.0004));
+        final offsetLng = (i % 3 == 0 ? 1 : -1) * (0.0008 + (i * 0.0003));
+        final pointWeight = (weight * (0.4 + (i % 3) * 0.2)).clamp(0.1, 1.0);
+        features.add(
+          '{"type":"Feature","geometry":{"type":"Point","coordinates":[${lng + offsetLng},${lat + offsetLat}]},"properties":{"weight":$pointWeight}}',
+        );
+      }
+    }
+
+    return '{"type":"FeatureCollection","features":[${features.join(",")}]}';
+  }
+
+  Future<void> _updateHeatmapForMode() async {
+    if (_mapboxMap == null || !_heatmapAdded) return;
+
+    try {
+      // Eski katmanları ve kaynağı kaldır
+      try {
+        await _mapboxMap!.style.removeStyleLayer('density-glow');
+      } catch (_) {}
+      try {
+        await _mapboxMap!.style.removeStyleLayer('density-mid');
+      } catch (_) {}
+      try {
+        await _mapboxMap!.style.removeStyleLayer('density-core');
+      } catch (_) {}
+      try {
+        await _mapboxMap!.style.removeStyleSource('density-source');
+      } catch (_) {}
+
+      _heatmapAdded = false;
+      await _addHeatmapLayer();
+    } catch (e) {
+      debugPrint('Heatmap güncelleme hatası: $e');
     }
   }
 
@@ -104,6 +241,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
 
     _modeTransitionController.forward(from: 0);
+    _updateHeatmapForMode();
 
     // Mod bilgi kartını 3 saniye sonra kapat
     Future.delayed(const Duration(seconds: 3), () {
@@ -115,7 +253,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (suggestions.isNotEmpty && _mapboxMap != null && _mapStyleReady) {
       final first = suggestions.first;
       _mapboxMap!.flyTo(
-        CameraOptions(center: Point(coordinates: Position(first['lng'] as double, first['lat'] as double)), zoom: 14),
+        CameraOptions(
+          center: Point(
+            coordinates: Position(
+              first['lng'] as double,
+              first['lat'] as double,
+            ),
+          ),
+          zoom: 14,
+        ),
         MapAnimationOptions(duration: 1200),
       );
     }
@@ -141,10 +287,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           // ── Harita ──
           if (_showMap)
             MapWidget(
-              cameraOptions: CameraOptions(center: _kDefaultMapCenter, zoom: 13),
+              cameraOptions: CameraOptions(
+                center: _kDefaultMapCenter,
+                zoom: 13,
+              ),
               styleUri: MapboxStyles.DARK,
-              onMapCreated: (map) { _mapboxMap = map; _tryApplyInitialCamera(); },
-              onStyleLoadedListener: (data) { _mapStyleReady = true; _tryApplyInitialCamera(); },
+              onMapCreated: (map) {
+                _mapboxMap = map;
+                _tryApplyInitialCamera();
+              },
+              onStyleLoadedListener: (data) {
+                _mapStyleReady = true;
+                _tryApplyInitialCamera();
+                _addHeatmapLayer();
+              },
             )
           else
             Container(color: AppColors.bgMap),
@@ -164,54 +320,126 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
           // ── Gradient overlay (üst) ──
           Positioned(
-            top: 0, left: 0, right: 0, height: 140,
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 140,
             child: Container(
-              decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [AppColors.bgMain.withOpacity(0.9), AppColors.bgMain.withOpacity(0)])),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.bgMain.withOpacity(0.9),
+                    AppColors.bgMain.withOpacity(0),
+                  ],
+                ),
+              ),
             ),
           ),
 
           // ── Gradient overlay (alt — mod renginde) ──
           Positioned(
-            bottom: 0, left: 0, right: 0, height: 260,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 260,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 600),
               decoration: BoxDecoration(
-                gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [
-                  AppColors.bgMain.withOpacity(0.98),
-                  modeColor.withOpacity(0.08),
-                  AppColors.bgMain.withOpacity(0),
-                ]),
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    AppColors.bgMain.withOpacity(0.98),
+                    modeColor.withOpacity(0.08),
+                    AppColors.bgMain.withOpacity(0),
+                  ],
+                ),
               ),
             ),
           ),
 
           // ── Üst Bar ──
           Positioned(
-            top: MediaQuery.of(context).padding.top + 8, left: 16, right: 16,
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 16,
+            right: 16,
             child: Row(
               children: [
-                RichText(text: const TextSpan(style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5), children: [
-                  TextSpan(text: 'Pulse', style: TextStyle(color: Colors.white)),
-                  TextSpan(text: 'City', style: TextStyle(color: AppColors.primary)),
-                ])),
+                RichText(
+                  text: const TextSpan(
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: 'Pulse',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      TextSpan(
+                        text: 'City',
+                        style: TextStyle(color: AppColors.primary),
+                      ),
+                    ],
+                  ),
+                ),
                 const Spacer(),
                 GestureDetector(
                   onTap: _showPulseDetail,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(color: AppColors.bgCard.withOpacity(0.9), borderRadius: BorderRadius.circular(30), border: Border.all(color: modeColor.withOpacity(0.3))),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.favorite_rounded, size: 16, color: modeColor),
-                      const SizedBox(width: 6),
-                      Text('$_pulseScore', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: modeColor)),
-                    ]),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.bgCard.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: modeColor.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.favorite_rounded,
+                          size: 16,
+                          color: modeColor,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '$_pulseScore',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: modeColor,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 GestureDetector(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
-                  child: Container(width: 40, height: 40, decoration: BoxDecoration(color: AppColors.bgCard.withOpacity(0.9), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.1))),
-                    child: const Icon(Icons.person_rounded, color: Colors.white, size: 20)),
+                  onTap: () => Navigator.push(
+                    context,
+                    SlideRightRoute(page: const ProfileScreen()),
+                  ),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.bgCard.withOpacity(0.9),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -220,114 +448,273 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           // ── Mod bilgi kartı (geçici) ──
           if (_showModeInfo)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 60, left: 20, right: 20,
+              top: MediaQuery.of(context).padding.top + 60,
+              left: 20,
+              right: 20,
               child: AnimatedBuilder(
                 animation: _modeTransitionAnim,
-                builder: (_, child) => Opacity(opacity: _modeTransitionAnim.value.clamp(0.0, 1.0), child: Transform.translate(offset: Offset(0, 10 * (1 - _modeTransitionAnim.value)), child: child)),
+                builder: (_, child) => Opacity(
+                  opacity: _modeTransitionAnim.value.clamp(0.0, 1.0),
+                  child: Transform.translate(
+                    offset: Offset(0, 10 * (1 - _modeTransitionAnim.value)),
+                    child: child,
+                  ),
+                ),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
-                    color: modeColor.withOpacity(0.12), borderRadius: BorderRadius.circular(14),
+                    color: modeColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: modeColor.withOpacity(0.25)),
                   ),
-                  child: Row(children: [
-                    Icon(_currentMode.icon, size: 20, color: modeColor),
-                    const SizedBox(width: 10),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(_currentMode.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: modeColor)),
-                      Text(_currentMode.description, style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5))),
-                    ])),
-                    Text('${_currentMode.suggestions.length} öneri', style: TextStyle(fontSize: 11, color: modeColor.withOpacity(0.6))),
-                  ]),
+                  child: Row(
+                    children: [
+                      Icon(_currentMode.icon, size: 20, color: modeColor),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _currentMode.label,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: modeColor,
+                              ),
+                            ),
+                            Text(
+                              _currentMode.description,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white.withOpacity(0.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '${_currentMode.suggestions.length} öneri',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: modeColor.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
 
           // ── Sağ taraf butonları ──
           Positioned(
-            right: 16, top: MediaQuery.of(context).padding.top + 64,
-            child: Column(children: [
-              _buildMapButton(Icons.my_location_rounded, () {
-                if (_currentPosition != null && _mapboxMap != null) {
-                  _mapboxMap!.flyTo(CameraOptions(center: Point(coordinates: Position(_currentPosition!.longitude, _currentPosition!.latitude)), zoom: 15), MapAnimationOptions(duration: 1000));
-                }
-              }),
-              const SizedBox(height: 8),
-              _buildMapButton(Icons.wifi_tethering_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SignalScreen()))),
-              const SizedBox(height: 8),
-              _buildMapButton(Icons.compass_calibration_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DiscoverScreen()))),
-              const SizedBox(height: 8),
-              Stack(children: [
-                _buildMapButton(Icons.chat_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InboxScreen()))),
-                Positioned(top: 0, right: 0, child: Container(width: 16, height: 16, decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle, border: Border.all(color: AppColors.bgMain, width: 2)),
-                  child: const Center(child: Text('3', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.white))))),
-              ]),
-            ]),
+            right: 16,
+            top: MediaQuery.of(context).padding.top + 64,
+            child: Column(
+              children: [
+                _buildMapButton(Icons.my_location_rounded, () {
+                  if (_currentPosition != null && _mapboxMap != null) {
+                    _mapboxMap!.flyTo(
+                      CameraOptions(
+                        center: Point(
+                          coordinates: Position(
+                            _currentPosition!.longitude,
+                            _currentPosition!.latitude,
+                          ),
+                        ),
+                        zoom: 15,
+                      ),
+                      MapAnimationOptions(duration: 1000),
+                    );
+                  }
+                }),
+                const SizedBox(height: 8),
+                _buildMapButton(
+                  Icons.wifi_tethering_rounded,
+                  () => Navigator.push(
+                    context,
+                    FadeScaleRoute(page: const SignalScreen()),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _buildMapButton(
+                  Icons.compass_calibration_rounded,
+                  () => Navigator.push(
+                    context,
+                    SlideUpRoute(page: const DiscoverScreen()),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Stack(
+                  children: [
+                    _buildMapButton(
+                      Icons.chat_rounded,
+                      () => Navigator.push(
+                        context,
+                        SlideUpRoute(page: const InboxScreen()),
+                      ),
+                    ),
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.bgMain, width: 2),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            '3',
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
 
           // ── Alt Kısım ──
           Positioned(
-            bottom: bottomPadding, left: 0, right: 0,
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              // Öneri kartları
-              SizedBox(
-                height: 100,
-                child: Stack(children: [
-                  NotificationListener<ScrollNotification>(
-                    onNotification: (n) { if (n is ScrollUpdateNotification) setState(() {}); return false; },
-                    child: ListView.builder(
-                      controller: _suggestionsController,
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _currentMode.suggestions.length,
-                      itemBuilder: (_, i) => _buildSuggestionCard(_currentMode.suggestions[i]),
-                    ),
-                  ),
-                  if (_showScrollHint)
-                    Positioned(right: 0, top: 0, bottom: 0, width: 50, child: IgnorePointer(
-                      child: Container(
-                        decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: [AppColors.bgMain.withOpacity(0), AppColors.bgMain.withOpacity(0.8)])),
-                        child: Center(child: Icon(Icons.chevron_right_rounded, color: Colors.white.withOpacity(0.3), size: 22)),
-                      ),
-                    )),
-                ]),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Mod seçici
-              SizedBox(
-                height: 42,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: ModeConfig.all.length,
-                  itemBuilder: (_, i) {
-                    final isActive = i == _selectedMode;
-                    final mode = ModeConfig.all[i];
-                    return GestureDetector(
-                      onTap: () => _onModeChanged(i),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        decoration: BoxDecoration(
-                          color: isActive ? mode.color : AppColors.bgCard.withOpacity(0.8),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(color: isActive ? mode.color.withOpacity(0.5) : Colors.white.withOpacity(0.08), width: 0.5),
-                          boxShadow: isActive ? [BoxShadow(color: mode.color.withOpacity(0.3), blurRadius: 12)] : null,
+            bottom: bottomPadding,
+            left: 0,
+            right: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Öneri kartları
+                SizedBox(
+                  height: 100,
+                  child: Stack(
+                    children: [
+                      NotificationListener<ScrollNotification>(
+                        onNotification: (n) {
+                          if (n is ScrollUpdateNotification) setState(() {});
+                          return false;
+                        },
+                        child: ListView.builder(
+                          controller: _suggestionsController,
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _currentMode.suggestions.length,
+                          itemBuilder: (_, i) =>
+                              _buildSuggestionCard(_currentMode.suggestions[i]),
                         ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(mode.icon, size: 16, color: isActive ? Colors.white : Colors.white.withOpacity(0.4)),
-                          const SizedBox(width: 6),
-                          Text(mode.label, style: TextStyle(fontSize: 13, fontWeight: isActive ? FontWeight.w700 : FontWeight.w500, color: isActive ? Colors.white : Colors.white.withOpacity(0.4))),
-                        ]),
                       ),
-                    );
-                  },
+                      if (_showScrollHint)
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 50,
+                          child: IgnorePointer(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [
+                                    AppColors.bgMain.withOpacity(0),
+                                    AppColors.bgMain.withOpacity(0.8),
+                                  ],
+                                ),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Colors.white.withOpacity(0.3),
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            ]),
+
+                const SizedBox(height: 12),
+
+                // Mod seçici
+                SizedBox(
+                  height: 42,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: ModeConfig.all.length,
+                    itemBuilder: (_, i) {
+                      final isActive = i == _selectedMode;
+                      final mode = ModeConfig.all[i];
+                      return GestureDetector(
+                        onTap: () => _onModeChanged(i),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: isActive
+                                ? mode.color
+                                : AppColors.bgCard.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: isActive
+                                  ? mode.color.withOpacity(0.5)
+                                  : Colors.white.withOpacity(0.08),
+                              width: 0.5,
+                            ),
+                            boxShadow: isActive
+                                ? [
+                                    BoxShadow(
+                                      color: mode.color.withOpacity(0.3),
+                                      blurRadius: 12,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                mode.icon,
+                                size: 16,
+                                color: isActive
+                                    ? Colors.white
+                                    : Colors.white.withOpacity(0.4),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                mode.label,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: isActive
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: isActive
+                                      ? Colors.white
+                                      : Colors.white.withOpacity(0.4),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
 
           if (_showBottomCard) _buildDetailCard(),
@@ -340,149 +727,366 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final color = s['color'] as Color;
     final modeColor = _currentMode.color;
 
-    return GestureDetector(
+    return AnimatedPress(
       onTap: () {
-        setState(() { _showBottomCard = true; _selectedAreaName = s['title']; _pulseScore = s['pulse']; _densityLabel = s['density']; });
+        setState(() {
+          _showBottomCard = true;
+          _selectedAreaName = s['title'];
+          _pulseScore = s['pulse'];
+          _densityLabel = s['density'];
+        });
         if (_mapboxMap != null && s['lat'] != null && s['lng'] != null) {
-          _mapboxMap!.flyTo(CameraOptions(center: Point(coordinates: Position(s['lng'] as double, s['lat'] as double)), zoom: 15), MapAnimationOptions(duration: 1000));
+          _mapboxMap!.flyTo(
+            CameraOptions(
+              center: Point(
+                coordinates: Position(s['lng'] as double, s['lat'] as double),
+              ),
+              zoom: 15,
+            ),
+            MapAnimationOptions(duration: 1000),
+          );
         }
       },
+      scaleDown: 0.96,
       child: Container(
-        width: 210, margin: const EdgeInsets.only(right: 10), padding: const EdgeInsets.all(14),
+        width: 210,
+        margin: const EdgeInsets.only(right: 10),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.bgCard.withOpacity(0.9), borderRadius: BorderRadius.circular(16),
+          color: AppColors.bgCard.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: modeColor.withOpacity(0.1)),
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Row(children: [
-            Container(width: 28, height: 28, decoration: BoxDecoration(color: modeColor.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-              child: Icon(s['icon'] as IconData, size: 15, color: modeColor)),
-            const SizedBox(width: 10),
-            Expanded(child: Text(s['title'], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white), overflow: TextOverflow.ellipsis)),
-          ]),
-          const SizedBox(height: 6),
-          Row(children: [
-            Expanded(child: Text(s['subtitle'], style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.4)), overflow: TextOverflow.ellipsis)),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.favorite_rounded, size: 10, color: color),
-                const SizedBox(width: 3),
-                Text('${s['pulse']}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: color)),
-              ]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: modeColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    s['icon'] as IconData,
+                    size: 15,
+                    color: modeColor,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    s['title'],
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
-          ]),
-        ]),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    s['subtitle'],
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.4),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.favorite_rounded, size: 10, color: color),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${s['pulse']}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildMapButton(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
+    return AnimatedPress(
       onTap: onTap,
-      child: Container(width: 44, height: 44, decoration: BoxDecoration(color: AppColors.bgCard.withOpacity(0.9), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.08))),
-        child: Icon(icon, color: Colors.white.withOpacity(0.7), size: 20)),
+      scaleDown: 0.9,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: AppColors.bgCard.withOpacity(0.9),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Icon(icon, color: Colors.white.withOpacity(0.7), size: 20),
+      ),
     );
   }
 
   void _showPulseDetail() {
     final modeColor = _currentMode.color;
     showModalBottomSheet(
-      context: context, backgroundColor: Colors.transparent,
+      context: context,
+      backgroundColor: Colors.transparent,
       builder: (_) => Container(
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 20),
-          Text('Bölge Pulse Skoru', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
-          const SizedBox(height: 16),
-          Text('$_pulseScore', style: TextStyle(fontSize: 56, fontWeight: FontWeight.w900, color: modeColor)),
-          const SizedBox(height: 6),
-          Text('$_densityLabel  •  $_trendLabel', style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.5))),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(color: modeColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(_currentMode.icon, size: 14, color: modeColor),
-              const SizedBox(width: 6),
-              Text('${_currentMode.label} Modu', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: modeColor)),
-            ]),
-          ),
-          const SizedBox(height: 20),
-          _buildScoreRow('Yoğunluk', 0.65, AppColors.densityMedium),
-          const SizedBox(height: 10),
-          _buildScoreRow('Enerji', 0.78, AppColors.pulseHigh),
-          const SizedBox(height: 10),
-          _buildScoreRow('Tazelik', 0.90, AppColors.success),
-          const SizedBox(height: 10),
-          _buildScoreRow('Güvenilirlik', 0.82, AppColors.modeSosyal),
-          const SizedBox(height: 20),
-          Container(
-            width: double.infinity, padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: modeColor.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: modeColor.withOpacity(0.15))),
-            child: Row(children: [
-              Icon(Icons.lightbulb_rounded, size: 18, color: modeColor),
-              const SizedBox(width: 10),
-              Expanded(child: Text('20 dk içinde yoğunluk artacak. Şimdi git!', style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.w500))),
-            ]),
-          ),
-          SizedBox(height: MediaQuery.of(context).padding.bottom + 12),
-        ]),
+        decoration: const BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Bölge Pulse Skoru',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '$_pulseScore',
+              style: TextStyle(
+                fontSize: 56,
+                fontWeight: FontWeight.w900,
+                color: modeColor,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '$_densityLabel  •  $_trendLabel',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: modeColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(_currentMode.icon, size: 14, color: modeColor),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${_currentMode.label} Modu',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: modeColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            _buildScoreRow('Yoğunluk', 0.65, AppColors.densityMedium),
+            const SizedBox(height: 10),
+            _buildScoreRow('Enerji', 0.78, AppColors.pulseHigh),
+            const SizedBox(height: 10),
+            _buildScoreRow('Tazelik', 0.90, AppColors.success),
+            const SizedBox(height: 10),
+            _buildScoreRow('Güvenilirlik', 0.82, AppColors.modeSosyal),
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: modeColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: modeColor.withOpacity(0.15)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.lightbulb_rounded, size: 18, color: modeColor),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '20 dk içinde yoğunluk artacak. Şimdi git!',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.7),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 12),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildScoreRow(String label, double value, Color color) {
-    return Row(children: [
-      SizedBox(width: 90, child: Text(label, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.5)))),
-      Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: value, backgroundColor: Colors.white.withOpacity(0.08), valueColor: AlwaysStoppedAnimation<Color>(color), minHeight: 6))),
-      const SizedBox(width: 10),
-      Text('${(value * 100).toInt()}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
-    ]);
+    return Row(
+      children: [
+        SizedBox(
+          width: 90,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white.withOpacity(0.5),
+            ),
+          ),
+        ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: value,
+              backgroundColor: Colors.white.withOpacity(0.08),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 6,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          '${(value * 100).toInt()}',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildDetailCard() {
     final modeColor = _currentMode.color;
     return Positioned(
-      bottom: 180, left: 16, right: 16,
+      bottom: 180,
+      left: 16,
+      right: 16,
       child: GestureDetector(
         onTap: () => setState(() => _showBottomCard = false),
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: AppColors.bgCard.withOpacity(0.95), borderRadius: BorderRadius.circular(20),
+            color: AppColors.bgCard.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: modeColor.withOpacity(0.15)),
-            boxShadow: [BoxShadow(color: modeColor.withOpacity(0.1), blurRadius: 20)],
+            boxShadow: [
+              BoxShadow(color: modeColor.withOpacity(0.1), blurRadius: 20),
+            ],
           ),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Text(_selectedAreaName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(color: modeColor.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.favorite_rounded, size: 12, color: modeColor),
-                  const SizedBox(width: 4),
-                  Text('$_pulseScore', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: modeColor)),
-                ]),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    _selectedAreaName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: modeColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.favorite_rounded,
+                          size: 12,
+                          color: modeColor,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$_pulseScore',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: modeColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ]),
-            const SizedBox(height: 10),
-            Row(children: [
-              _buildTag(_densityLabel, modeColor),
-              const SizedBox(width: 8),
-              _buildTag(_trendLabel, AppColors.success),
-              const SizedBox(width: 8),
-              _buildTag('${_currentMode.label} modu', modeColor),
-            ]),
-            const SizedBox(height: 6),
-            Text('Kapat', style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.25))),
-          ]),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  _buildTag(_densityLabel, modeColor),
+                  const SizedBox(width: 8),
+                  _buildTag(_trendLabel, AppColors.success),
+                  const SizedBox(width: 8),
+                  _buildTag('${_currentMode.label} modu', modeColor),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Kapat',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white.withOpacity(0.25),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -491,8 +1095,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildTag(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
     );
   }
 }
