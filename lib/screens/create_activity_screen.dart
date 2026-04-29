@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../localization/app_localizations.dart';
 import '../models/activity_model.dart';
 import '../services/activity_service.dart';
 import '../services/location_service.dart';
@@ -196,37 +197,38 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
   }
 
   String? _validateCurrentStep() {
+    final l10n = context.l10n;
     switch (_currentStep) {
       case 0:
         return null;
       case 1:
         if (_titleController.text.trim().isEmpty) {
-          return 'Başlık ekle.';
+          return l10n.t('activity_validation_title_required');
         }
         if (_titleController.text.trim().length < 4) {
-          return 'Başlık biraz daha açıklayıcı olsun.';
+          return l10n.t('activity_validation_title_too_short');
         }
         return null;
       case 2:
         if (_locationNameController.text.trim().isEmpty) {
-          return 'Buluşma yeri seç.';
+          return l10n.t('activity_validation_location_required');
         }
         if (_cityController.text.trim().isEmpty) {
-          return 'Şehir gerekli.';
+          return l10n.t('activity_validation_city_required');
         }
         if (_latitude == null || _longitude == null) {
-          return 'Koordinat al — konum izni gerekiyor.';
+          return l10n.t('activity_validation_coordinates_required');
         }
         if (_startsAt.isBefore(DateTime.now().subtract(const Duration(minutes: 1)))) {
-          return 'Başlangıç ileri bir zaman olmalı.';
+          return l10n.t('activity_validation_start_in_future');
         }
         if (_endsAt != null && !_endsAt!.isAfter(_startsAt)) {
-          return 'Bitiş zamanı, başlangıçtan sonra olmalı.';
+          return l10n.t('activity_validation_end_after_start');
         }
         return null;
       case 3:
         if (_ageRange != null && _ageRange!.start >= _ageRange!.end) {
-          return 'Yaş aralığını gözden geçir.';
+          return l10n.t('activity_validation_age_range_invalid');
         }
         return null;
     }

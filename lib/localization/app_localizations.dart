@@ -181,6 +181,16 @@ class AppLocalizations {
       'shopping_empty': 'Bu kategoride yakında\nmağaza bulunamadı.',
       'shopping_directions': 'Yol Tarifi Al',
       'shopping_detail_title': 'Mağaza Detayı',
+      'activity_validation_title_required': 'Başlık ekle.',
+      'activity_validation_title_too_short': 'Başlık biraz daha açıklayıcı olsun.',
+      'activity_validation_location_required': 'Buluşma yeri seç.',
+      'activity_validation_city_required': 'Şehir gerekli.',
+      'activity_validation_coordinates_required':
+          'Koordinat al — konum izni gerekiyor.',
+      'activity_validation_start_in_future': 'Başlangıç ileri bir zaman olmalı.',
+      'activity_validation_end_after_start':
+          'Bitiş zamanı, başlangıçtan sonra olmalı.',
+      'activity_validation_age_range_invalid': 'Yaş aralığını gözden geçir.',
     },
     'en': {
       'settings': 'Settings',
@@ -332,6 +342,18 @@ class AppLocalizations {
       'shopping_empty': 'No stores found nearby\nfor this category.',
       'shopping_directions': 'Get Directions',
       'shopping_detail_title': 'Store Details',
+      'activity_validation_title_required': 'Add a title.',
+      'activity_validation_title_too_short':
+          'Make the title a bit more descriptive.',
+      'activity_validation_location_required': 'Pick a meeting place.',
+      'activity_validation_city_required': 'City is required.',
+      'activity_validation_coordinates_required':
+          'Get coordinates — location permission required.',
+      'activity_validation_start_in_future':
+          'Start time must be in the future.',
+      'activity_validation_end_after_start':
+          'End time must be after the start.',
+      'activity_validation_age_range_invalid': 'Check the age range.',
     },
     'de': {
       'settings': 'Einstellungen',
@@ -483,6 +505,18 @@ class AppLocalizations {
       'shopping_empty': 'Keine Geschäfte in dieser\nKategorie in der Nähe gefunden.',
       'shopping_directions': 'Route berechnen',
       'shopping_detail_title': 'Geschäftsdetails',
+      'activity_validation_title_required': 'Titel hinzufügen.',
+      'activity_validation_title_too_short':
+          'Mach den Titel etwas aussagekräftiger.',
+      'activity_validation_location_required': 'Treffpunkt wählen.',
+      'activity_validation_city_required': 'Stadt ist erforderlich.',
+      'activity_validation_coordinates_required':
+          'Koordinaten erforderlich — Standortzugriff nötig.',
+      'activity_validation_start_in_future':
+          'Startzeit muss in der Zukunft liegen.',
+      'activity_validation_end_after_start':
+          'Endzeit muss nach dem Start liegen.',
+      'activity_validation_age_range_invalid': 'Altersspanne prüfen.',
     },
   };
   static const Map<String, Map<String, String>> _phrases = {
