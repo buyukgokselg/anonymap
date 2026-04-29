@@ -3252,17 +3252,30 @@ class _HomeScreenState extends State<HomeScreen>
         ? 292.0
         : 332.0;
     final suggestionHeight = compactDeck ? 116.0 : 132.0;
+    // Fade the rightmost ~22px so users get a visual cue that more chips
+    // exist when the row overflows (notably in DE with longer labels).
     final modeSelector = SizedBox(
       height: 42,
-      child: ListView.builder(
-        controller: _modeSelectorController,
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        itemCount: ModeConfig.all.length,
-        itemBuilder: (_, i) {
-          final mode = ModeConfig.all[i];
-          return _buildModeSelectorChip(mode, i);
+      child: ShaderMask(
+        shaderCallback: (bounds) {
+          return const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            stops: [0.0, 0.85, 1.0],
+            colors: [Colors.white, Colors.white, Colors.transparent],
+          ).createShader(bounds);
         },
+        blendMode: BlendMode.dstIn,
+        child: ListView.builder(
+          controller: _modeSelectorController,
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          itemCount: ModeConfig.all.length,
+          itemBuilder: (_, i) {
+            final mode = ModeConfig.all[i];
+            return _buildModeSelectorChip(mode, i);
+          },
+        ),
       ),
     );
 
