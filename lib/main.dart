@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'config/mapbox_access.dart';
@@ -23,50 +24,64 @@ import 'services/runtime_config_service.dart';
 import 'theme/colors.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await runZonedGuarded<Future<void>>(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp();
 
-  FlutterError.onError = (details) {
-    FlutterError.presentError(details);
-    debugPrint('Flutter framework error: ${details.exceptionAsString()}');
-    if (details.stack != null) {
-      debugPrint(details.stack.toString());
+    // Crashlytics: collect crashes only in release builds; debug logs to console.
+    final crashlytics = FirebaseCrashlytics.instance;
+    await crashlytics.setCrashlyticsCollectionEnabled(!kDebugMode);
+
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+      debugPrint('Flutter framework error: ${details.exceptionAsString()}');
+      if (details.stack != null) {
+        debugPrint(details.stack.toString());
+      }
+      // Forward to Crashlytics (no-op in debug because collection is disabled).
+      crashlytics.recordFlutterFatalError(details);
+    };
+
+    PlatformDispatcher.instance.onError = (error, stack) {
+      debugPrint('Unhandled platform error: $error');
+      debugPrint(stack.toString());
+      crashlytics.recordError(error, stack, fatal: true);
+      return true;
+    };
+
+    ErrorWidget.builder = (details) => _AppRenderFallback(details: details);
+
+    await RuntimeConfigService.initialize();
+    await AuthService().initialize();
+    // Initialize push notifications if user is logged in
+    if (AuthService().isLoggedIn) {
+      NotificationService().initialize().catchError(
+        (e) => debugPrint('Notification init error: $e'),
+      );
+      unawaited(NotificationsInboxService.instance.fetchUnreadCount());
     }
-  };
+    await AppLocaleService.instance.initialize();
+    await RealtimeService.instance.initialize();
+    await AppPresenceService.instance.initialize();
 
-  PlatformDispatcher.instance.onError = (error, stack) {
-    debugPrint('Unhandled platform error: $error');
-    debugPrint(stack.toString());
-    return true;
-  };
+    if (kMapboxPublicAccessToken.isNotEmpty) {
+      MapboxOptions.setAccessToken(kMapboxPublicAccessToken);
+    }
 
-  ErrorWidget.builder = (details) => _AppRenderFallback(details: details);
-
-  await RuntimeConfigService.initialize();
-  await AuthService().initialize();
-  // Initialize push notifications if user is logged in
-  if (AuthService().isLoggedIn) {
-    NotificationService().initialize().catchError(
-      (e) => debugPrint('Notification init error: $e'),
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ),
     );
-    unawaited(NotificationsInboxService.instance.fetchUnreadCount());
-  }
-  await AppLocaleService.instance.initialize();
-  await RealtimeService.instance.initialize();
-  await AppPresenceService.instance.initialize();
 
-  if (kMapboxPublicAccessToken.isNotEmpty) {
-    MapboxOptions.setAccessToken(kMapboxPublicAccessToken);
-  }
-
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ),
-  );
-
-  runApp(const PulseCityApp());
+    runApp(const PulseCityApp());
+  }, (error, stack) {
+    // Last-resort handler for errors that escape the zone.
+    debugPrint('Uncaught zone error: $error');
+    debugPrint(stack.toString());
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+  });
 }
 
 class PulseCityApp extends StatelessWidget {
