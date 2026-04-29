@@ -208,9 +208,10 @@ class _MatchesScreenState extends State<MatchesScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final likesMeBadge = _likesMeTotalCount > _likesMe.length
+    final likesMeBadgeLabel = _likesMeTotalCount > _likesMe.length
         ? '$_likesMeTotalCount+'
         : '${_likesMe.length}';
+    final hasPending = _likesMeTotalCount > 0;
     return Scaffold(
       backgroundColor: AppColors.bgMain,
       appBar: AppBar(
@@ -224,7 +225,54 @@ class _MatchesScreenState extends State<MatchesScreen>
           unselectedLabelColor: AppColors.textSecondary,
           tabs: [
             Tab(text: '${l10n.phrase('Eşleşmeler')} (${_accepted.length})'),
-            Tab(text: '${l10n.phrase('Beni Beğenenler')} ($likesMeBadge)'),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(l10n.phrase('Beni Beğenenler')),
+                  const SizedBox(width: 8),
+                  // Prominent red pulse badge when pending likes exist —
+                  // gray pill when zero so the layout doesn't shift.
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 22),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: hasPending
+                          ? AppColors.modeFlirt
+                          : Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: hasPending
+                          ? [
+                              BoxShadow(
+                                color:
+                                    AppColors.modeFlirt.withValues(alpha: 0.45),
+                                blurRadius: 10,
+                                spreadRadius: -1,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Text(
+                      likesMeBadgeLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: hasPending
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.55),
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
         actions: [
