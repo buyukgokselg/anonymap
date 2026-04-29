@@ -133,7 +133,9 @@ class _MatchesScreenState extends State<MatchesScreen>
         });
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('İşlem tamamlanamadı')),
+        SnackBar(
+          content: Text(context.l10n.phrase('İşlem tamamlanamadı')),
+        ),
       );
       return;
     }

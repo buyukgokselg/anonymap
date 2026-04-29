@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../localization/app_localizations.dart';
 import '../models/activity_model.dart';
 import '../services/activity_service.dart';
 import '../theme/colors.dart';
@@ -1526,7 +1527,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.textSecondary,
                     ),
-                    child: const Text('Vazgeç'),
+                    child: Text(context.l10n.phrase('Vazgeç')),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -1621,7 +1622,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.textSecondary,
                     ),
-                    child: const Text('Vazgeç'),
+                    child: Text(context.l10n.phrase('Vazgeç')),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -1716,7 +1717,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.textSecondary,
                     ),
-                    child: const Text('Vazgeç'),
+                    child: Text(context.l10n.phrase('Vazgeç')),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -1777,7 +1778,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             style: TextButton.styleFrom(
               foregroundColor: AppColors.textSecondary,
             ),
-            child: const Text('Vazgeç'),
+            child: Text(context.l10n.phrase('Vazgeç')),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),

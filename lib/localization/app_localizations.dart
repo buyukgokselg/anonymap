@@ -588,6 +588,9 @@ class AppLocalizations {
       'Bu kullanıcı': 'Bu kullanıcı',
       'Gönderi oluşturulamadı.': 'Gönderi oluşturulamadı.',
       'Mekan kaydedildi.': 'Mekan kaydedildi.',
+      'Sil': 'Sil',
+      'Etkinliklerin': 'Etkinliklerin',
+      'İşlem tamamlanamadı': 'İşlem tamamlanamadı',
     },
     'en': {
       'Açık': 'Open',
@@ -771,6 +774,9 @@ class AppLocalizations {
       'Türkçe': 'Turkish',
       'English': 'English',
       'Deutsch': 'German',
+      'Sil': 'Delete',
+      'Etkinliklerin': 'Your activities',
+      'İşlem tamamlanamadı': 'Could not complete action',
     },
     'de': {
       'Açık': 'Offen',
@@ -965,6 +971,9 @@ class AppLocalizations {
       'Türkçe': 'Türkisch',
       'English': 'Englisch',
       'Deutsch': 'Deutsch',
+      'Sil': 'Löschen',
+      'Etkinliklerin': 'Deine Aktivitäten',
+      'İşlem tamamlanamadı': 'Aktion konnte nicht ausgeführt werden',
     },
   };
 

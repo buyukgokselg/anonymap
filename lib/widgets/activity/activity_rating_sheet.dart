@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../localization/app_localizations.dart';
 import '../../models/activity_model.dart';
 import '../../models/activity_rating_model.dart';
 import '../../services/activity_service.dart';
@@ -285,7 +286,7 @@ class _ActivityRatingSheetState extends State<ActivityRatingSheet> {
               padding: const EdgeInsets.symmetric(vertical: 14),
               foregroundColor: AppColors.textSecondary,
             ),
-            child: const Text('Vazgeç'),
+            child: Text(context.l10n.phrase('Vazgeç')),
           ),
         ),
         const SizedBox(width: 12),

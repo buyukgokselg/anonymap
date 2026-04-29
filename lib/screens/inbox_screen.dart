@@ -303,9 +303,9 @@ class _InboxScreenState extends State<InboxScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text(
-                'Sil',
-                style: TextStyle(
+              child: Text(
+                context.l10n.phrase('Sil'),
+                style: const TextStyle(
                   color: AppColors.error,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1582,9 +1582,9 @@ class _InboxActivitiesStripState extends State<_InboxActivitiesStrip> {
                   children: [
                     Row(
                       children: [
-                        const Text(
-                          'Etkinliklerin',
-                          style: TextStyle(
+                        Text(
+                          context.l10n.phrase('Etkinliklerin'),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13.5,
                             fontWeight: FontWeight.w800,

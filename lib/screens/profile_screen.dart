@@ -1379,9 +1379,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(
-              'Sil',
-              style: TextStyle(
+            child: Text(
+              _l10n.phrase('Sil'),
+              style: const TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w800,
               ),
@@ -1630,9 +1630,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Sil',
-              style: TextStyle(
+            child: Text(
+              _l10n.phrase('Sil'),
+              style: const TextStyle(
                 color: AppColors.error,
                 fontWeight: FontWeight.w700,
               ),
