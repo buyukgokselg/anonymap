@@ -1516,7 +1516,9 @@ class _InboxActivitiesStripState extends State<_InboxActivitiesStrip> {
         _joined = results[1].items;
         _loaded = true;
       });
-    } catch (_) {
+    } catch (error, stack) {
+      // Auto-refresh stream — silent fail OK for UI, but log for diagnostics.
+      debugPrint('Inbox activities strip fetch failed: $error\n$stack');
       if (!mounted) return;
       setState(() => _loaded = true);
     }

@@ -201,6 +201,20 @@ class _DiscoverPeopleScreenState extends State<DiscoverPeopleScreen>
       }
     } catch (error, stack) {
       debugPrint('Spark error: $error\n$stack');
+      if (!mounted) return;
+      // User's affirmative action failed — surface it so they can retry.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.tr3(
+              tr: 'Beğeni gönderilemedi. Bağlantını kontrol et.',
+              en: "Couldn't send your spark. Check your connection.",
+              de: 'Spark konnte nicht gesendet werden. Verbindung prüfen.',
+            ),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -208,6 +222,8 @@ class _DiscoverPeopleScreenState extends State<DiscoverPeopleScreen>
     try {
       await _api.recordDiscoverPass(card.id);
     } catch (error, stack) {
+      // Pass failure is acceptable to swallow — user already moved on
+      // to the next card. We log for diagnostics only.
       debugPrint('Pass error: $error\n$stack');
     }
   }
