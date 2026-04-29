@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Anonymap</string>
+	<string>PulseCity</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>anonymap</string>
+	<string>PulseCity</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -67,10 +67,18 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>MBXAccessToken</key>
-	<string>pk.eyJ1IjoiYnV5dWtnb2tzZWwiLCJhIjoiY21uaHp1d3N1MDNsdzJycXI3Y2p4MWpkbSJ9.aKmOTTaINVOykU-chxv1ew</string>
+	<string>$(MAPBOX_ACCESS_TOKEN)</string>
+	<key>GooglePlacesApiKey</key>
+	<string>$(GOOGLE_PLACES_API_KEY)</string>
+	<key>BackendBaseUrl</key>
+	<string>$(BACKEND_BASE_URL)</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Anonymap haritada konumunuzu göstermek ve çevrenizi göstermek için konum kullanır.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Anonymap uygulama açıkken konumunuzu haritada göstermek için kullanır.</string>
+	<string>PulseCity haritada konumunuzu göstermek ve çevrenizi keşfetmeniz için konum kullanır.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>PulseCity durumlar alanında galerindeki fotoğrafları seçebilmen için fotoğraf erişimine ihtiyaç duyar.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>PulseCity seçtiğin görselleri durum olarak paylaşabilmen için fotoğraf erişimine ihtiyaç duyar.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>PulseCity durum paylaşırken kamerayla fotoğraf çekebilmen için kamera erişimine ihtiyaç duyar.</string>
 </dict>
 </plist>

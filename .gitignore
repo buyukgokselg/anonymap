@@ -43,3 +43,62 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local mobile/runtime secrets
+/android/local.properties
+/ios/Flutter/Secrets.xcconfig
+
+# Backend local configuration
+/backend/.env
+/backend/**/bin/
+/backend/**/obj/
+/backend/src/PulseCity.Api/appsettings.Local.json
+/backend/src/PulseCity.Api/Uploads/
+
+# Local scratch / diagnostics
+/broken_strings_scan.txt
+/string_inventory.txt
+/runout.txt
+/runerr.txt
+/adb
+/const
+
+# Azure / backend publish artifacts (should never be committed)
+/backend/publish/
+/backend/publish*/
+/backend/publish*.zip
+/backend/deploy*.zip
+/backend/azure-publish*.zip
+/backend/azure-webapp-logs*.zip
+/backend/api-run*.log
+/backend/api-run*.err.log
+/backend/runlogs/
+**/publish/
+**/publish*/
+**/publish*.zip
+**/deploy*.zip
+
+# Secret-bearing configuration (only the .example file should be tracked)
+**/appsettings.Local.json
+
+# Root-level captured diagnostics
+/azure_logs.zip
+/runlogs/
+
+# Build artifacts (signed APK'lar release script'i çıktısıdır, repo'da olmamalı)
+/anonymap-*.apk
+*.apk
+
+# Local diagnostics, run logs, deploy outputs
+/az_login_*.txt
+/cloudflared_*.txt
+/cloudflared_err.txt
+/cloudflared_out.txt
+/backend_run_*.txt
+/backend_publish_temp/
+/seed_test_summary.json
+/broken_text_report.csv
+/phrase_keys.txt
+/t_keys.txt
+/profile_design_final.html
+/profile_designs.html
