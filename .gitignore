@@ -68,11 +68,15 @@ app.*.map.json
 /backend/publish*/
 /backend/publish*.zip
 /backend/deploy*.zip
+/backend/azure-publish*/
 /backend/azure-publish*.zip
+/backend/azure-webapp-logs*/
 /backend/azure-webapp-logs*.zip
 /backend/api-run*.log
 /backend/api-run*.err.log
 /backend/runlogs/
+/backend/_api_verify/
+/backend/_verify/
 **/publish/
 **/publish*/
 **/publish*.zip
