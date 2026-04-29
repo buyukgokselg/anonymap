@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../localization/app_localizations.dart';
 import '../screens/notifications_screen.dart';
 import '../services/notifications_inbox_service.dart';
 import '../theme/colors.dart';
 import 'animated_press.dart';
 import 'page_transitions.dart';
+
+String _bellLabel(BuildContext context) {
+  return switch (context.l10n.languageCode) {
+    'en' => 'Notifications',
+    'de' => 'Benachrichtigungen',
+    _ => 'Bildirimler',
+  };
+}
 
 /// A bell icon button that shows the live unread notification count.
 ///
@@ -73,42 +82,50 @@ class _MapButtonBell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        AnimatedPress(
-          onTap: onTap,
-          scaleDown: 0.9,
-          child: Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: AppColors.bgCard.withValues(alpha: 0.92),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: hasUnread
-                    ? AppColors.primary.withValues(alpha: 0.45)
-                    : Colors.white.withValues(alpha: 0.08),
+    final label = _bellLabel(context);
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        label: hasUnread ? '$label ($count)' : label,
+        button: true,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            AnimatedPress(
+              onTap: onTap,
+              scaleDown: 0.9,
+              child: Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AppColors.bgCard.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: hasUnread
+                        ? AppColors.primary.withValues(alpha: 0.45)
+                        : Colors.white.withValues(alpha: 0.08),
+                  ),
+                ),
+                child: Icon(
+                  hasUnread
+                      ? Icons.notifications_active_rounded
+                      : Icons.notifications_none_rounded,
+                  color: hasUnread
+                      ? AppColors.primary
+                      : Colors.white.withValues(alpha: 0.7),
+                  size: 20,
+                ),
               ),
             ),
-            child: Icon(
-              hasUnread
-                  ? Icons.notifications_active_rounded
-                  : Icons.notifications_none_rounded,
-              color: hasUnread
-                  ? AppColors.primary
-                  : Colors.white.withValues(alpha: 0.7),
-              size: 20,
-            ),
-          ),
+            if (hasUnread)
+              Positioned(
+                top: -2,
+                right: -2,
+                child: _UnreadBadge(count: count),
+              ),
+          ],
         ),
-        if (hasUnread)
-          Positioned(
-            top: -2,
-            right: -2,
-            child: _UnreadBadge(count: count),
-          ),
-      ],
+      ),
     );
   }
 }
@@ -142,7 +159,7 @@ class _AppBarBell extends StatelessWidget {
                 : Icons.notifications_none_rounded,
             color: hasUnread ? AppColors.primary : color,
           ),
-          tooltip: 'Bildirimler',
+          tooltip: _bellLabel(context),
         ),
         if (hasUnread)
           Positioned(

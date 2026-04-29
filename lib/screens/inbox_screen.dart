@@ -1136,6 +1136,11 @@ class _InboxScreenState extends State<InboxScreen> {
               color: Colors.white,
               size: 22,
             ),
+            tooltip: _copy(
+              tr: 'Yeni mesaj',
+              en: 'New message',
+              de: 'Neue Nachricht',
+            ),
             onPressed: _openNewMessageSheet,
           ),
         ],

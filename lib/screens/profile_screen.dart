@@ -4530,6 +4530,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: _buildCircularGlassButton(
                   icon: Icons.arrow_back_ios_new_rounded,
                   onTap: () => Navigator.of(context).pop(),
+                  tooltip: _copy(tr: 'Geri', en: 'Back', de: 'Zurück'),
                 ),
               ),
             ),
@@ -4545,6 +4546,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _buildCircularGlassButton(
                         icon: Icons.qr_code_rounded,
                         onTap: _showProfileCodeDialog,
+                        tooltip: _copy(
+                          tr: 'Profil kodu',
+                          en: 'Profile code',
+                          de: 'Profilcode',
+                        ),
                       ),
                       const SizedBox(width: 8),
                       _buildCircularGlassButton(
@@ -4558,11 +4564,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           );
                           await _loadProfile();
                         },
+                        tooltip: _copy(
+                          tr: 'Ayarlar',
+                          en: 'Settings',
+                          de: 'Einstellungen',
+                        ),
                       ),
                     ] else
                       _buildCircularGlassButton(
                         icon: Icons.more_horiz_rounded,
                         onTap: _showUserOptionsSheet,
+                        tooltip: _copy(
+                          tr: 'Daha fazla',
+                          en: 'More',
+                          de: 'Mehr',
+                        ),
                       ),
                   ],
                 ),
@@ -4723,8 +4739,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildCircularGlassButton({
     required IconData icon,
     required VoidCallback onTap,
+    String? tooltip,
   }) {
-    return GestureDetector(
+    final core = GestureDetector(
       onTap: onTap,
       child: ClipOval(
         child: BackdropFilter(
@@ -4744,6 +4761,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
+    );
+    if (tooltip == null || tooltip.isEmpty) return core;
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(label: tooltip, button: true, child: core),
     );
   }
 

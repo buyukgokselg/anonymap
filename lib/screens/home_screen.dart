@@ -2287,19 +2287,34 @@ class _HomeScreenState extends State<HomeScreen>
     return _currentMode.icon;
   }
 
-  Widget _buildMapButton(IconData icon, VoidCallback onTap) {
-    return AnimatedPress(
-      onTap: onTap,
-      scaleDown: 0.9,
-      child: Container(
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(
-          color: AppColors.bgCard.withValues(alpha: 0.92),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+  Widget _buildMapButton(
+    IconData icon,
+    VoidCallback onTap, {
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        label: tooltip,
+        button: true,
+        child: AnimatedPress(
+          onTap: onTap,
+          scaleDown: 0.9,
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.bgCard.withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white.withValues(alpha: 0.7),
+              size: 20,
+            ),
+          ),
         ),
-        child: Icon(icon, color: Colors.white.withValues(alpha: 0.7), size: 20),
       ),
     );
   }
@@ -2310,34 +2325,46 @@ class _HomeScreenState extends State<HomeScreen>
   /// uygun renkte parlar.
   Widget _buildCreateActivityRailButton() {
     final modeColor = _currentMode.color;
-    return AnimatedPress(
-      onTap: () => Navigator.push(
-        context,
-        SlideUpRoute(page: const CreateActivityScreen()),
-      ),
-      scaleDown: 0.9,
-      child: Container(
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [modeColor, modeColor.withValues(alpha: 0.72)],
+    final label = _copy(
+      tr: 'Etkinlik oluştur',
+      en: 'Create activity',
+      de: 'Aktivität erstellen',
+    );
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        label: label,
+        button: true,
+        child: AnimatedPress(
+          onTap: () => Navigator.push(
+            context,
+            SlideUpRoute(page: const CreateActivityScreen()),
           ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: modeColor.withValues(alpha: 0.45),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
+          scaleDown: 0.9,
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [modeColor, modeColor.withValues(alpha: 0.72)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: modeColor.withValues(alpha: 0.45),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: const Icon(
-          Icons.add_rounded,
-          color: Colors.white,
-          size: 26,
+            child: const Icon(
+              Icons.add_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
+          ),
         ),
       ),
     );
@@ -2347,31 +2374,43 @@ class _HomeScreenState extends State<HomeScreen>
   /// Profil rail'lerinde foto/story/shorts için inline + var; feed post
   /// için global giriş noktası bu rail butonu.
   Widget _buildComposeRailButton() {
-    return AnimatedPress(
-      onTap: _openComposer,
-      scaleDown: 0.9,
-      child: Container(
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.primary, AppColors.primaryGlow],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.45),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
+    final label = _copy(
+      tr: 'Gönderi oluştur',
+      en: 'Create post',
+      de: 'Beitrag erstellen',
+    );
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        label: label,
+        button: true,
+        child: AnimatedPress(
+          onTap: _openComposer,
+          scaleDown: 0.9,
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.primary, AppColors.primaryGlow],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.45),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: const Icon(
-          Icons.edit_rounded,
-          color: Colors.white,
-          size: 20,
+            child: const Icon(
+              Icons.edit_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
         ),
       ),
     );
@@ -3145,18 +3184,31 @@ class _HomeScreenState extends State<HomeScreen>
             const SizedBox(height: 8),
             _buildComposeRailButton(),
             const SizedBox(height: 8),
-            _buildMapButton(Icons.my_location_rounded, () {
-              final pos = _currentPosition;
-              if (pos != null) {
-                _flyToCoordinates(pos.longitude, pos.latitude, zoom: 15);
-              }
-            }),
+            _buildMapButton(
+              Icons.my_location_rounded,
+              () {
+                final pos = _currentPosition;
+                if (pos != null) {
+                  _flyToCoordinates(pos.longitude, pos.latitude, zoom: 15);
+                }
+              },
+              tooltip: _copy(
+                tr: 'Konumum',
+                en: 'My location',
+                de: 'Mein Standort',
+              ),
+            ),
             const SizedBox(height: 8),
             _buildMapButton(
               Icons.compass_calibration_rounded,
               () => Navigator.push(
                 context,
                 SlideUpRoute(page: const DiscoverPeopleScreen()),
+              ),
+              tooltip: _copy(
+                tr: 'Yakındakiler',
+                en: 'Nearby',
+                de: 'In der Nähe',
               ),
             ),
             const SizedBox(height: 8),
@@ -3165,6 +3217,11 @@ class _HomeScreenState extends State<HomeScreen>
               () => Navigator.push(
                 context,
                 SlideUpRoute(page: const MatchesScreen()),
+              ),
+              tooltip: _copy(
+                tr: 'Eşleşmeler',
+                en: 'Matches',
+                de: 'Matches',
               ),
             ),
             const SizedBox(height: 8),
@@ -3178,6 +3235,11 @@ class _HomeScreenState extends State<HomeScreen>
                   SlideUpRoute(
                     page: const ShortsScreen(scope: ShortsFeedScope.global),
                   ),
+                ),
+                tooltip: _copy(
+                  tr: 'Kısa videolar',
+                  en: 'Shorts',
+                  de: 'Kurzvideos',
                 ),
               ),
             ],

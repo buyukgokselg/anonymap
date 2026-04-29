@@ -188,10 +188,14 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
     final color = selected ? AppColors.primary : Colors.white.withValues(alpha: 0.5);
 
     return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _selectTab(index),
-        child: AnimatedContainer(
+      child: Semantics(
+        label: label,
+        button: true,
+        selected: selected,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _selectTab(index),
+          child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
           decoration: BoxDecoration(
@@ -215,6 +219,7 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
