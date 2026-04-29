@@ -59,18 +59,6 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
   AppLocalizations get _l10n => context.l10n;
   String get _myUid => AuthService().currentUserId;
 
-  String _copy({
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (_l10n.languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   @override
   void initState() {
     super.initState();
@@ -259,7 +247,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          _copy(
+          context.tr3(
             tr: 'Yorum panoya kopyalandı.',
             en: 'Comment copied to clipboard.',
             de: 'Kommentar wurde in die Zwischenablage kopiert.',
@@ -283,7 +271,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
         backgroundColor: AppColors.bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          _copy(
+          context.tr3(
             tr: 'Yorumu düzenle',
             en: 'Edit comment',
             de: 'Kommentar bearbeiten',
@@ -296,7 +284,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
           minLines: 2,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
-            hintText: _copy(
+            hintText: context.tr3(
               tr: 'Yorum yaz...',
               en: 'Write a comment...',
               de: 'Kommentar schreiben...',
@@ -313,12 +301,12 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(_copy(tr: 'Vazgeç', en: 'Cancel', de: 'Abbrechen')),
+            child: Text(context.tr3(tr: 'Vazgeç', en: 'Cancel', de: 'Abbrechen')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-            child: Text(_copy(tr: 'Kaydet', en: 'Save', de: 'Speichern')),
+            child: Text(context.tr3(tr: 'Kaydet', en: 'Save', de: 'Speichern')),
           ),
         ],
       ),
@@ -341,12 +329,12 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
       SnackBar(
         content: Text(
           updated != null
-              ? _copy(
+              ? context.tr3(
                   tr: 'Yorum güncellendi.',
                   en: 'Comment updated.',
                   de: 'Kommentar aktualisiert.',
                 )
-              : _copy(
+              : context.tr3(
                   tr: 'Yorum güncellenemedi.',
                   en: 'Comment could not be updated.',
                   de: 'Kommentar konnte nicht aktualisiert werden.',
@@ -368,7 +356,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
         backgroundColor: AppColors.bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          _copy(
+          context.tr3(
             tr: 'Bu yorum silinsin mi?',
             en: 'Delete this comment?',
             de: 'Diesen Kommentar löschen?',
@@ -376,7 +364,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
         ),
         content: Text(
-          _copy(
+          context.tr3(
             tr: 'Bu işlem geri alınamaz.',
             en: 'This action cannot be undone.',
             de: 'Diese Aktion kann nicht rückgängig gemacht werden.',
@@ -386,12 +374,12 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(_copy(tr: 'Vazgeç', en: 'Cancel', de: 'Abbrechen')),
+            child: Text(context.tr3(tr: 'Vazgeç', en: 'Cancel', de: 'Abbrechen')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            child: Text(_copy(tr: 'Sil', en: 'Delete', de: 'Löschen')),
+            child: Text(context.tr3(tr: 'Sil', en: 'Delete', de: 'Löschen')),
           ),
         ],
       ),
@@ -409,12 +397,12 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
       SnackBar(
         content: Text(
           deleted
-              ? _copy(
+              ? context.tr3(
                   tr: 'Yorum silindi.',
                   en: 'Comment deleted.',
                   de: 'Kommentar gelöscht.',
                 )
-              : _copy(
+              : context.tr3(
                   tr: 'Yorum silinemedi.',
                   en: 'Comment could not be deleted.',
                   de: 'Kommentar konnte nicht gelöscht werden.',
@@ -440,7 +428,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
         backgroundColor: AppColors.bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          _copy(
+          context.tr3(
             tr: 'Kullanıcıyı şikayet et',
             en: 'Report user',
             de: 'Nutzer melden',
@@ -466,7 +454,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
                   DropdownMenuItem(
                     value: 'Harassment',
                     child: Text(
-                      _copy(
+                      context.tr3(
                         tr: 'Rahatsız edici davranış',
                         en: 'Harassment',
                         de: 'Belästigendes Verhalten',
@@ -476,7 +464,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
                   DropdownMenuItem(
                     value: 'Fake profile',
                     child: Text(
-                      _copy(
+                      context.tr3(
                         tr: 'Sahte profil',
                         en: 'Fake profile',
                         de: 'Fake-Profil',
@@ -486,7 +474,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
                   DropdownMenuItem(
                     value: 'Inappropriate content',
                     child: Text(
-                      _copy(
+                      context.tr3(
                         tr: 'İstenmeyen içerik',
                         en: 'Inappropriate content',
                         de: 'Unangemessener Inhalt',
@@ -496,7 +484,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
                   DropdownMenuItem(
                     value: 'Safety concern',
                     child: Text(
-                      _copy(
+                      context.tr3(
                         tr: 'Güvenlik endişesi',
                         en: 'Safety concern',
                         de: 'Sicherheitsbedenken',
@@ -515,7 +503,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
                 maxLines: 4,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: _copy(
+                  hintText: context.tr3(
                     tr: 'Kısa bir not ekleyebilirsin',
                     en: 'You can add a short note',
                     de: 'Du kannst eine kurze Notiz hinzufügen',
@@ -537,12 +525,12 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(_copy(tr: 'Vazgeç', en: 'Cancel', de: 'Abbrechen')),
+            child: Text(context.tr3(tr: 'Vazgeç', en: 'Cancel', de: 'Abbrechen')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.warning),
-            child: Text(_copy(tr: 'Gönder', en: 'Send', de: 'Senden')),
+            child: Text(context.tr3(tr: 'Gönder', en: 'Send', de: 'Senden')),
           ),
         ],
       ),
@@ -569,7 +557,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _copy(
+            context.tr3(
               tr: 'Şikayet kaydı oluşturuldu.',
               en: 'Report submitted.',
               de: 'Meldung wurde erstellt.',
@@ -585,7 +573,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _copy(
+            context.tr3(
               tr: 'Şikayet gönderilemedi.',
               en: 'Report could not be sent.',
               de: 'Meldung konnte nicht gesendet werden.',
@@ -631,22 +619,22 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
       itemBuilder: (context) => [
         PopupMenuItem<String>(
           value: 'copy',
-          child: Text(_copy(tr: 'Kopyala', en: 'Copy', de: 'Kopieren')),
+          child: Text(context.tr3(tr: 'Kopyala', en: 'Copy', de: 'Kopieren')),
         ),
         if (isMine)
           PopupMenuItem<String>(
             value: 'edit',
-            child: Text(_copy(tr: 'Düzenle', en: 'Edit', de: 'Bearbeiten')),
+            child: Text(context.tr3(tr: 'Düzenle', en: 'Edit', de: 'Bearbeiten')),
           ),
         if (isMine)
           PopupMenuItem<String>(
             value: 'delete',
-            child: Text(_copy(tr: 'Sil', en: 'Delete', de: 'Löschen')),
+            child: Text(context.tr3(tr: 'Sil', en: 'Delete', de: 'Löschen')),
           ),
         if (!isMine && commenterUid.isNotEmpty)
           PopupMenuItem<String>(
             value: 'report',
-            child: Text(_copy(tr: 'Şikayet Et', en: 'Report', de: 'Melden')),
+            child: Text(context.tr3(tr: 'Şikayet Et', en: 'Report', de: 'Melden')),
           ),
       ],
     );
@@ -995,7 +983,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
             ),
             const SizedBox(height: 16),
             Text(
-              _copy(
+              context.tr3(
                 tr: 'Shorts yüklenemedi',
                 en: 'Could not load shorts',
                 de: 'Shorts konnten nicht geladen werden',
@@ -1009,7 +997,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
             ),
             const SizedBox(height: 8),
             Text(
-              _copy(
+              context.tr3(
                 tr: 'Bağlantını kontrol et ve tekrar dene.',
                 en: 'Check your connection and try again.',
                 de: 'Überprüfe deine Verbindung und versuche es erneut.',
@@ -1036,7 +1024,7 @@ class _ShortsFeedViewState extends State<ShortsFeedView> {
                   ),
                 ),
                 child: Text(
-                  _copy(
+                  context.tr3(
                     tr: 'Tekrar Dene',
                     en: 'Try Again',
                     de: 'Erneut versuchen',

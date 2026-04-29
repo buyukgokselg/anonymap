@@ -64,18 +64,6 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
     };
   }
 
-  String _copy({
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (context.l10n.languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   Future<bool> _confirmExit() async {
     final l10n = context.l10n;
     return await showDialog<bool>(
@@ -155,22 +143,22 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
               _buildNavItem(
                 index: 0,
                 icon: Icons.map_rounded,
-                label: _copy(tr: 'Harita', en: 'Map', de: 'Karte'),
+                label: context.tr3(tr: 'Harita', en: 'Map', de: 'Karte'),
               ),
               _buildNavItem(
                 index: 1,
                 icon: Icons.wifi_tethering_rounded,
-                label: _copy(tr: 'Radar', en: 'Radar', de: 'Radar'),
+                label: context.tr3(tr: 'Radar', en: 'Radar', de: 'Radar'),
               ),
               _buildNavItem(
                 index: 2,
                 icon: Icons.chat_bubble_rounded,
-                label: _copy(tr: 'Sohbet', en: 'Chat', de: 'Chat'),
+                label: context.tr3(tr: 'Sohbet', en: 'Chat', de: 'Chat'),
               ),
               _buildNavItem(
                 index: 3,
                 icon: Icons.person_rounded,
-                label: _copy(tr: 'Profil', en: 'Profile', de: 'Profil'),
+                label: context.tr3(tr: 'Profil', en: 'Profile', de: 'Profil'),
               ),
             ],
           ),

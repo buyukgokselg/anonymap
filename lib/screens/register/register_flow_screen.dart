@@ -61,18 +61,6 @@ class _RegisterFlowScreenState extends State<RegisterFlowScreen> {
 
   RegisterStep get _currentStep => RegisterStep.values[_currentIndex];
 
-  String _copy({
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (AppLocalizations.of(context).languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   // ── Akış kontrolü ──────────────────────────────────────────────────
 
   void _markChanged() {
@@ -148,32 +136,32 @@ class _RegisterFlowScreenState extends State<RegisterFlowScreen> {
 
   String _validationMessageFor(RegisterStep step) {
     return switch (step) {
-      RegisterStep.account => _copy(
+      RegisterStep.account => context.tr3(
         tr: 'Geçerli bir e-posta ve en az 8 karakterli şifre gir.',
         en: 'Enter a valid email and a password of at least 8 characters.',
         de: 'Gib eine gültige E-Mail und mindestens 8 Zeichen Passwort ein.',
       ),
-      RegisterStep.identity => _copy(
+      RegisterStep.identity => context.tr3(
         tr: 'Adını yaz ve doğum tarihini seç (18+).',
         en: 'Enter your name and birth date (18+).',
         de: 'Gib deinen Namen und Geburtsdatum ein (18+).',
       ),
-      RegisterStep.gender => _copy(
+      RegisterStep.gender => context.tr3(
         tr: 'Cinsiyetini seç.',
         en: 'Choose your gender.',
         de: 'Wähle dein Geschlecht.',
       ),
-      RegisterStep.mode => _copy(
+      RegisterStep.mode => context.tr3(
         tr: 'Bir tanışma niyeti seç.',
         en: 'Choose your intent.',
         de: 'Wähle deine Absicht.',
       ),
-      RegisterStep.city => _copy(
+      RegisterStep.city => context.tr3(
         tr: 'Şehrini seç.',
         en: 'Choose your city.',
         de: 'Wähle deine Stadt.',
       ),
-      RegisterStep.terms => _copy(
+      RegisterStep.terms => context.tr3(
         tr: 'Devam etmek için her iki onayı da işaretle.',
         en: 'Tick both confirmations to continue.',
         de: 'Setze beide Bestätigungen, um fortzufahren.',
@@ -184,13 +172,13 @@ class _RegisterFlowScreenState extends State<RegisterFlowScreen> {
 
   String get _continueLabel {
     if (_currentStep == RegisterStep.terms) {
-      return _copy(
+      return context.tr3(
         tr: 'Hesabımı oluştur',
         en: 'Create my account',
         de: 'Mein Konto erstellen',
       );
     }
-    return _copy(tr: 'Devam', en: 'Continue', de: 'Weiter');
+    return context.tr3(tr: 'Devam', en: 'Continue', de: 'Weiter');
   }
 
   // ── Submit ────────────────────────────────────────────────────────

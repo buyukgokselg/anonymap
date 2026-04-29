@@ -128,14 +128,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool get _isMyProfile => widget.userId == null || widget.userId == _myUid;
   AppLocalizations get _l10n => context.l10n;
 
-  String _copy({required String tr, required String en, required String de}) {
-    return switch (_l10n.languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   @override
   void initState() {
     super.initState();
@@ -406,7 +398,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _loadProfile(silent: true);
       if (!mounted) return;
       _showSnackBar(
-        _copy(
+        context.tr3(
           tr: 'Arkadaşlık isteği kabul edildi.',
           en: 'Friend request accepted.',
           de: 'Freundschaftsanfrage akzeptiert.',
@@ -417,7 +409,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       debugPrint('Arkadaşlık isteği kabul hatası: $e\n$st');
       if (!mounted) return;
       _showSnackBar(
-        _copy(
+        context.tr3(
           tr: 'İstek kabul edilemedi.',
           en: 'Request could not be accepted.',
           de: 'Anfrage konnte nicht angenommen werden.',
@@ -435,7 +427,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _loadProfile(silent: true);
       if (!mounted) return;
       _showSnackBar(
-        _copy(
+        context.tr3(
           tr: 'İstek reddedildi.',
           en: 'Request declined.',
           de: 'Anfrage abgelehnt.',
@@ -445,7 +437,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       debugPrint('Arkadaşlık isteği reddetme hatası: $e\n$st');
       if (!mounted) return;
       _showSnackBar(
-        _copy(
+        context.tr3(
           tr: 'İstek reddedilemedi.',
           en: 'Request could not be declined.',
           de: 'Anfrage konnte nicht abgelehnt werden.',
@@ -467,12 +459,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       _showSnackBar(
         success
-            ? _copy(
+            ? context.tr3(
                 tr: 'Arkadaşlık isteği iptal edildi.',
                 en: 'Friend request cancelled.',
                 de: 'Freundschaftsanfrage abgebrochen.',
               )
-            : _copy(
+            : context.tr3(
                 tr: 'İstek iptal edilemedi.',
                 en: 'Request could not be cancelled.',
                 de: 'Anfrage konnte nicht abgebrochen werden.',
@@ -483,7 +475,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       debugPrint('Arkadaşlık isteği iptal hatası: $e\n$st');
       if (!mounted) return;
       _showSnackBar(
-        _copy(
+        context.tr3(
           tr: 'İstek iptal edilemedi.',
           en: 'Request could not be cancelled.',
           de: 'Anfrage konnte nicht abgebrochen werden.',
@@ -502,7 +494,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: AppColors.bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          _copy(
+          context.tr3(
             tr: 'Arkadaşlıktan çıkar?',
             en: 'Remove friend?',
             de: 'Freund entfernen?',
@@ -513,7 +505,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         content: Text(
-          _copy(
+          context.tr3(
             tr: 'Bu kullanıcı arkadaş listenizden çıkarılacak.',
             en: 'This user will be removed from your friends list.',
             de: 'Dieser Nutzer wird aus deiner Freundesliste entfernt.',
@@ -528,7 +520,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            child: Text(_copy(tr: 'Kaldır', en: 'Remove', de: 'Entfernen')),
+            child: Text(context.tr3(tr: 'Kaldır', en: 'Remove', de: 'Entfernen')),
           ),
         ],
       ),
@@ -541,12 +533,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       _showSnackBar(
         success
-            ? _copy(
+            ? context.tr3(
                 tr: 'Arkadaşlıktan çıkarıldı.',
                 en: 'Removed from friends.',
                 de: 'Aus den Freunden entfernt.',
               )
-            : _copy(
+            : context.tr3(
                 tr: 'Arkadaşlıktan çıkarılamadı.',
                 en: 'Friend could not be removed.',
                 de: 'Freund konnte nicht entfernt werden.',
@@ -557,7 +549,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       debugPrint('Arkadaş kaldırma hatası: $e\n$st');
       if (!mounted) return;
       _showSnackBar(
-        _copy(
+        context.tr3(
           tr: 'Arkadaşlıktan çıkarılamadı.',
           en: 'Friend could not be removed.',
           de: 'Freund konnte nicht entfernt werden.',
@@ -576,12 +568,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       _showSnackBar(
         success
-            ? _copy(
+            ? context.tr3(
                 tr: 'Kullanıcının engeli kaldırıldı.',
                 en: 'User unblocked.',
                 de: 'Nutzer entsperrt.',
               )
-            : _copy(
+            : context.tr3(
                 tr: 'Engel kaldırılamadı.',
                 en: 'User could not be unblocked.',
                 de: 'Nutzer konnte nicht entsperrt werden.',
@@ -592,7 +584,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       debugPrint('Engel kaldırma hatası: $e\n$st');
       if (!mounted) return;
       _showSnackBar(
-        _copy(
+        context.tr3(
           tr: 'Engel kaldırılamadı.',
           en: 'User could not be unblocked.',
           de: 'Nutzer konnte nicht entsperrt werden.',
@@ -628,7 +620,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
 
-    return _copy(tr: fallbackTr, en: fallbackEn, de: fallbackDe);
+    return context.tr3(tr: fallbackTr, en: fallbackEn, de: fallbackDe);
   }
 
   String _getModeName(String? mode) {
@@ -2534,7 +2526,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return [
         Expanded(
           child: _buildPrimaryActionButton(
-            label: _copy(tr: 'Kabul Et', en: 'Accept', de: 'Akzeptieren'),
+            label: context.tr3(tr: 'Kabul Et', en: 'Accept', de: 'Akzeptieren'),
             icon: Icons.check_rounded,
             onTap: _acceptIncomingFriendRequest,
           ),
@@ -2543,7 +2535,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _buildGhostActionButton(
           icon: Icons.close_rounded,
           onTap: _declineIncomingFriendRequest,
-          tooltip: _copy(tr: 'Reddet', en: 'Decline', de: 'Ablehnen'),
+          tooltip: context.tr3(tr: 'Reddet', en: 'Decline', de: 'Ablehnen'),
         ),
         const SizedBox(width: 8),
         _buildGhostActionButton(
@@ -2558,7 +2550,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return [
         Expanded(
           child: _buildPrimaryActionButton(
-            label: _copy(tr: 'Erişim Kısıtlı', en: 'Restricted', de: 'Eingeschränkt'),
+            label: context.tr3(tr: 'Erişim Kısıtlı', en: 'Restricted', de: 'Eingeschränkt'),
             icon: Icons.block_rounded,
             onTap: () {},
             disabled: true,
@@ -2568,7 +2560,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _buildGhostActionButton(
           icon: Icons.flag_rounded,
           onTap: _showUserOptionsSheet,
-          tooltip: _copy(tr: 'Şikayet', en: 'Report', de: 'Melden'),
+          tooltip: context.tr3(tr: 'Şikayet', en: 'Report', de: 'Melden'),
         ),
         const SizedBox(width: 8),
         _buildGhostActionButton(
@@ -2583,7 +2575,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return [
         Expanded(
           child: _buildPrimaryActionButton(
-            label: _copy(tr: 'Engeli Kaldır', en: 'Unblock', de: 'Entsperren'),
+            label: context.tr3(tr: 'Engeli Kaldır', en: 'Unblock', de: 'Entsperren'),
             icon: Icons.lock_open_rounded,
             onTap: _unblockUser,
           ),
@@ -2601,7 +2593,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return [
         Expanded(
           child: _buildPrimaryActionButton(
-            label: _copy(
+            label: context.tr3(
               tr: 'İsteği İptal Et',
               en: 'Cancel Request',
               de: 'Anfrage abbrechen',
@@ -4530,7 +4522,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: _buildCircularGlassButton(
                   icon: Icons.arrow_back_ios_new_rounded,
                   onTap: () => Navigator.of(context).pop(),
-                  tooltip: _copy(tr: 'Geri', en: 'Back', de: 'Zurück'),
+                  tooltip: context.tr3(tr: 'Geri', en: 'Back', de: 'Zurück'),
                 ),
               ),
             ),
@@ -4546,7 +4538,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _buildCircularGlassButton(
                         icon: Icons.qr_code_rounded,
                         onTap: _showProfileCodeDialog,
-                        tooltip: _copy(
+                        tooltip: context.tr3(
                           tr: 'Profil kodu',
                           en: 'Profile code',
                           de: 'Profilcode',
@@ -4564,7 +4556,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           );
                           await _loadProfile();
                         },
-                        tooltip: _copy(
+                        tooltip: context.tr3(
                           tr: 'Ayarlar',
                           en: 'Settings',
                           de: 'Einstellungen',
@@ -4574,7 +4566,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _buildCircularGlassButton(
                         icon: Icons.more_horiz_rounded,
                         onTap: _showUserOptionsSheet,
-                        tooltip: _copy(
+                        tooltip: context.tr3(
                           tr: 'Daha fazla',
                           en: 'More',
                           de: 'Mehr',
@@ -4704,9 +4696,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     final label = _hasPendingIncomingFriendRequest
-        ? _copy(tr: 'Kabul Et', en: 'Accept', de: 'Akzeptieren')
+        ? context.tr3(tr: 'Kabul Et', en: 'Accept', de: 'Akzeptieren')
         : (_hasPendingOutgoingFriendRequest
-            ? _copy(tr: 'İptal', en: 'Cancel', de: 'Abbrechen')
+            ? context.tr3(tr: 'İptal', en: 'Cancel', de: 'Abbrechen')
             : (_isFriend ? _l10n.phrase('Mesaj') : _l10n.phrase('Eşleş')));
     final callback = _hasPendingIncomingFriendRequest
         ? _acceptIncomingFriendRequest
@@ -5125,7 +5117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (_hasPendingOutgoingFriendRequest)
               _optionRow(
                 Icons.undo_rounded,
-                _copy(
+                context.tr3(
                   tr: 'İsteği İptal Et',
                   en: 'Cancel Request',
                   de: 'Anfrage abbrechen',
@@ -5139,7 +5131,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (_hasPendingIncomingFriendRequest)
               _optionRow(
                 Icons.close_rounded,
-                _copy(
+                context.tr3(
                   tr: 'İsteği Reddet',
                   en: 'Decline Request',
                   de: 'Anfrage ablehnen',
@@ -5153,7 +5145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (_isFriend)
               _optionRow(
                 Icons.person_remove_rounded,
-                _copy(
+                context.tr3(
                   tr: 'Arkadaşlıktan Çıkar',
                   en: 'Remove Friend',
                   de: 'Freund entfernen',
@@ -5173,7 +5165,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _optionRow(
               _isBlockedByMe ? Icons.lock_open_rounded : Icons.block_rounded,
               _isBlockedByMe
-                  ? _copy(tr: 'Engeli Kaldır', en: 'Unblock', de: 'Entsperren')
+                  ? context.tr3(tr: 'Engeli Kaldır', en: 'Unblock', de: 'Entsperren')
                   : _l10n.phrase('Engelle'),
               _isBlockedByMe ? AppColors.success : AppColors.error,
               () {
@@ -5268,8 +5260,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 await _firestoreService.blockUser(_myUid, _targetUid);
                 if (!mounted) return;
                 await _loadProfile(silent: true);
+                if (!mounted) return;
                 _showSnackBar(
-                  _copy(
+                  context.tr3(
                     tr: 'Kullanıcı engellendi.',
                     en: 'User blocked.',
                     de: 'Nutzer blockiert.',

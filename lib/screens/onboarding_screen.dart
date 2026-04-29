@@ -122,49 +122,37 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   String _orientationLabel(String id) {
     return switch (id) {
-      'straight' => _copy(tr: 'Heteroseksüel', en: 'Straight', de: 'Hetero'),
-      'gay' => _copy(tr: 'Gey', en: 'Gay', de: 'Schwul'),
-      'lesbian' => _copy(tr: 'Lezbiyen', en: 'Lesbian', de: 'Lesbisch'),
-      'bi' => _copy(tr: 'Biseksüel', en: 'Bisexual', de: 'Bisexuell'),
-      'pan' => _copy(tr: 'Panseksüel', en: 'Pansexual', de: 'Pansexuell'),
+      'straight' => context.tr3(tr: 'Heteroseksüel', en: 'Straight', de: 'Hetero'),
+      'gay' => context.tr3(tr: 'Gey', en: 'Gay', de: 'Schwul'),
+      'lesbian' => context.tr3(tr: 'Lezbiyen', en: 'Lesbian', de: 'Lesbisch'),
+      'bi' => context.tr3(tr: 'Biseksüel', en: 'Bisexual', de: 'Bisexuell'),
+      'pan' => context.tr3(tr: 'Panseksüel', en: 'Pansexual', de: 'Pansexuell'),
       'queer' => 'Queer',
-      'asexual' => _copy(tr: 'Aseksüel', en: 'Asexual', de: 'Asexuell'),
-      'none' => _copy(tr: 'Belirtmek istemiyorum', en: 'Prefer not to say', de: 'Keine Angabe'),
+      'asexual' => context.tr3(tr: 'Aseksüel', en: 'Asexual', de: 'Asexuell'),
+      'none' => context.tr3(tr: 'Belirtmek istemiyorum', en: 'Prefer not to say', de: 'Keine Angabe'),
       _ => '',
     };
   }
 
   String _intentLabel(String id) {
     return switch (id) {
-      'casual' => _copy(tr: 'Rahat / kısa süreli', en: 'Casual', de: 'Locker'),
-      'relationship' => _copy(tr: 'Uzun ilişki', en: 'Relationship', de: 'Beziehung'),
-      'friendship' => _copy(tr: 'Sadece arkadaşlık', en: 'Friendship', de: 'Freundschaft'),
-      'open' => _copy(tr: 'Açığım, görelim', en: 'Open to anything', de: 'Offen'),
-      'unsure' => _copy(tr: 'Henüz emin değilim', en: 'Still figuring out', de: 'Noch unsicher'),
+      'casual' => context.tr3(tr: 'Rahat / kısa süreli', en: 'Casual', de: 'Locker'),
+      'relationship' => context.tr3(tr: 'Uzun ilişki', en: 'Relationship', de: 'Beziehung'),
+      'friendship' => context.tr3(tr: 'Sadece arkadaşlık', en: 'Friendship', de: 'Freundschaft'),
+      'open' => context.tr3(tr: 'Açığım, görelim', en: 'Open to anything', de: 'Offen'),
+      'unsure' => context.tr3(tr: 'Henüz emin değilim', en: 'Still figuring out', de: 'Noch unsicher'),
       _ => '',
-    };
-  }
-
-  String _copy({
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (_l10n.languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
     };
   }
 
   String _privacyTitle(String id) {
     return switch (id) {
-      'full' => _copy(
+      'full' => context.tr3(
         tr: 'Tam Katılım',
         en: 'Full Participation',
         de: 'Volle Teilnahme',
       ),
-      'partial' => _copy(
+      'partial' => context.tr3(
         tr: 'Kısmi Katılım',
         en: 'Partial Participation',
         de: 'Teilweise Teilnahme',
@@ -176,17 +164,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   String _privacyDescription(String id) {
     return switch (id) {
-      'full' => _copy(
+      'full' => context.tr3(
         tr: 'Konum verilerinle şehrin nabzına katkı yap. Diğer kullanıcılar seni bireysel olarak göremez.',
         en: 'Contribute to your city pulse with location data. Other users cannot see you individually.',
         de: 'Trage mit deinen Standortdaten zum Puls der Stadt bei. Andere Nutzer können dich nicht individuell sehen.',
       ),
-      'partial' => _copy(
+      'partial' => context.tr3(
         tr: 'Mahalle seviyesinde veri paylaş. Daha düşük hassasiyet, daha fazla gizlilik.',
         en: 'Share data at neighborhood level. Lower precision, more privacy.',
         de: 'Teile Daten auf Nachbarschaftsebene. Geringere Genauigkeit, mehr Privatsphäre.',
       ),
-      'ghost' => _copy(
+      'ghost' => context.tr3(
         tr: 'Hiçbir veri paylaşma. Sadece şehri izle. İstediğin zaman değiştirebilirsin.',
         en: 'Share no data. Just observe the city. You can change this anytime.',
         de: 'Teile keine Daten. Beobachte nur die Stadt. Du kannst das jederzeit ändern.',
@@ -271,7 +259,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // Validasyon
     if (_currentPage == 0 && _privacyLevel == null) {
       _showError(
-        _copy(
+        context.tr3(
           tr: 'Bir gizlilik seviyesi seç.',
           en: 'Choose a privacy level.',
           de: 'Wähle eine Datenschutzstufe.',
@@ -281,7 +269,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
     if (_currentPage == 1 && _selectedInterests.isEmpty) {
       _showError(
-        _copy(
+        context.tr3(
           tr: 'En az bir ilgi alanı seç.',
           en: 'Choose at least one interest.',
           de: 'Wähle mindestens ein Interesse.',
@@ -292,7 +280,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (_currentPage == 2 &&
         (_orientation == null || _relationshipIntent == null)) {
       _showError(
-        _copy(
+        context.tr3(
           tr: 'Yönelim ve niyetini seç (gizlilik için \'belirtmek istemiyorum\' uygundur).',
           en: 'Pick orientation and intent ("prefer not to say" is fine).',
           de: 'Wähle Orientierung und Absicht ("keine Angabe" ist ok).',
@@ -346,7 +334,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     } catch (e) {
       if (mounted) {
         _showError(
-          _copy(
+          context.tr3(
             tr: 'Profil oluşturulamadı. Tekrar dene.',
             en: 'Profile could not be created. Try again.',
             de: 'Das Profil konnte nicht erstellt werden. Versuche es erneut.',
@@ -485,7 +473,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               )
                             : Text(
                                 _currentPage == 3
-                                    ? _copy(
+                                    ? context.tr3(
                                         tr: 'Başla',
                                         en: 'Start',
                                         de: 'Starten',
@@ -528,7 +516,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               children: [
                 TextSpan(
-                  text: _copy(
+                  text: context.tr3(
                     tr: 'Gizliliğin,\n',
                     en: 'Your privacy,\n',
                     de: 'Deine Privatsphäre,\n',
@@ -536,7 +524,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   style: TextStyle(color: Colors.white),
                 ),
                 TextSpan(
-                  text: _copy(
+                  text: context.tr3(
                     tr: 'senin kontrolünde.',
                     en: 'under your control.',
                     de: 'liegt in deiner Hand.',
@@ -548,7 +536,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            _copy(
+            context.tr3(
               tr: 'Verilerini nasıl paylaşacağını sen belirle. İstediğin zaman değiştirebilirsin.',
               en: 'You decide how your data is shared. You can change this anytime.',
               de: 'Du entscheidest, wie deine Daten geteilt werden. Du kannst das jederzeit ändern.',
@@ -654,7 +642,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               children: [
                 TextSpan(
-                  text: _copy(
+                  text: context.tr3(
                     tr: 'Nelerle\n',
                     en: 'What are\n',
                     de: 'Wofür\n',
@@ -662,7 +650,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   style: TextStyle(color: Colors.white),
                 ),
                 TextSpan(
-                  text: _copy(
+                  text: context.tr3(
                     tr: 'ilgileniyorsun?',
                     en: 'you into?',
                     de: 'interessierst du dich?',
@@ -674,7 +662,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            _copy(
+            context.tr3(
               tr: 'Önerilerimizi sana özel hale getirelim. En az birini seç.',
               en: 'Let’s personalize your recommendations. Choose at least one.',
               de: 'Lass uns deine Empfehlungen personalisieren. Wähle mindestens eins.',
@@ -744,7 +732,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            _copy(
+            context.tr3(
               tr: '${_selectedInterests.length} seçildi',
               en: '${_selectedInterests.length} selected',
               de: '${_selectedInterests.length} ausgewählt',
@@ -784,7 +772,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               children: [
                 TextSpan(
-                  text: _copy(
+                  text: context.tr3(
                     tr: 'Daha iyi\n',
                     en: 'Let’s get to\n',
                     de: 'Lass uns dich\n',
@@ -792,7 +780,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   style: const TextStyle(color: Colors.white),
                 ),
                 TextSpan(
-                  text: _copy(
+                  text: context.tr3(
                     tr: 'tanışalım.',
                     en: 'know you.',
                     de: 'besser kennenlernen.',
@@ -804,7 +792,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            _copy(
+            context.tr3(
               tr: 'Eşleştirmeyi senin için anlamlı kılalım. Her şey sonradan değiştirilebilir.',
               en: 'So matches feel right. You can change everything later.',
               de: 'Damit Matches passen. Du kannst später alles ändern.',
@@ -817,7 +805,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            _copy(
+            context.tr3(
               tr: 'Cinsel yönelim',
               en: 'Orientation',
               de: 'Orientierung',
@@ -846,7 +834,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 28),
           Text(
-            _copy(
+            context.tr3(
               tr: 'Şu an ne arıyorsun?',
               en: 'What are you looking for?',
               de: 'Was suchst du gerade?',
@@ -959,7 +947,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 32),
           Text(
-            _copy(
+            context.tr3(
               tr: 'Hazırsın!',
               en: 'You are ready!',
               de: 'Du bist bereit!',
@@ -972,7 +960,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            _copy(
+            context.tr3(
               tr: 'Şehrin nabzını hissetmeye başla.\nHer şeyi istediğin zaman değiştirebilirsin.',
               en: 'Start feeling the pulse of your city.\nYou can change everything anytime.',
               de: 'Spüre jetzt den Puls deiner Stadt.\nDu kannst alles jederzeit ändern.',
@@ -999,7 +987,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               children: [
                 _buildSummaryRow(
                   Icons.shield_rounded,
-                  _copy(
+                  context.tr3(
                     tr: 'Gizlilik',
                     en: 'Privacy',
                     de: 'Datenschutz',
@@ -1019,12 +1007,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 _buildSummaryRow(
                   Icons.interests_rounded,
-                  _copy(
+                  context.tr3(
                     tr: 'İlgi Alanları',
                     en: 'Interests',
                     de: 'Interessen',
                   ),
-                  _copy(
+                  context.tr3(
                     tr: '${_selectedInterests.length} seçildi',
                     en: '${_selectedInterests.length} selected',
                     de: '${_selectedInterests.length} ausgewählt',
@@ -1040,7 +1028,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                   _buildSummaryRow(
                     Icons.favorite_border_rounded,
-                    _copy(
+                    context.tr3(
                       tr: 'Niyet',
                       en: 'Intent',
                       de: 'Absicht',

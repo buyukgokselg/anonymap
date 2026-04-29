@@ -43,19 +43,6 @@ class _CityStepState extends State<CityStep> {
     setState(() => _query = _searchController.text);
   }
 
-  String _copy(
-    BuildContext context, {
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (AppLocalizations.of(context).languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   List<TurkishCity> get _filtered {
     final q = normalizeCityQuery(_query);
     if (q.isEmpty) return kTurkishCities;
@@ -88,8 +75,7 @@ class _CityStepState extends State<CityStep> {
       scrollable: false,
       titleSpans: [
         TextSpan(
-          text: _copy(
-            context,
+          text: context.tr3(
             tr: 'Hangi\n',
             en: 'Which city\n',
             de: 'In welcher Stadt\n',
@@ -97,8 +83,7 @@ class _CityStepState extends State<CityStep> {
           style: const TextStyle(color: Colors.white),
         ),
         TextSpan(
-          text: _copy(
-            context,
+          text: context.tr3(
             tr: 'şehirdesin?',
             en: 'are you in?',
             de: 'lebst du?',
@@ -106,8 +91,7 @@ class _CityStepState extends State<CityStep> {
           style: const TextStyle(color: AppColors.primary),
         ),
       ],
-      subtitle: _copy(
-        context,
+      subtitle: context.tr3(
         tr: 'Şehrindeki insanları keşfetmek için kullanılır.',
         en: 'Used to discover people in your city.',
         de: 'Wird verwendet, um Menschen in deiner Stadt zu entdecken.',
@@ -131,8 +115,7 @@ class _CityStepState extends State<CityStep> {
                 cursorColor: AppColors.primary,
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
-                  hintText: _copy(
-                    context,
+                  hintText: context.tr3(
                     tr: 'Şehir ara…',
                     en: 'Search city…',
                     de: 'Stadt suchen…',
@@ -170,8 +153,7 @@ class _CityStepState extends State<CityStep> {
               child: filtered.isEmpty
                   ? Center(
                       child: Text(
-                        _copy(
-                          context,
+                        context.tr3(
                           tr: 'Sonuç bulunamadı',
                           en: 'No results',
                           de: 'Keine Ergebnisse',

@@ -72,18 +72,6 @@ class _SignalScreenState extends State<SignalScreen>
   set _signalActive(bool v) => SignalScreen.isSignalActive = v;
   AppLocalizations get _l10n => context.l10n;
 
-  String _copy({
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (_l10n.languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   List<Map<String, dynamic>> _nearbyPeople = [];
   List<Map<String, dynamic>> _signalPlaces = [];
   DateTime _lastSignalPlacesFetch = DateTime.fromMillisecondsSinceEpoch(0);
@@ -555,13 +543,13 @@ class _SignalScreenState extends State<SignalScreen>
   String _genderLabel(String gender) {
     switch (gender) {
       case 'male':
-        return _copy(tr: 'Erkek', en: 'Male', de: 'Männlich');
+        return context.tr3(tr: 'Erkek', en: 'Male', de: 'Männlich');
       case 'female':
-        return _copy(tr: 'Kadın', en: 'Female', de: 'Weiblich');
+        return context.tr3(tr: 'Kadın', en: 'Female', de: 'Weiblich');
       case 'nonbinary':
-        return _copy(tr: 'Non-binary', en: 'Non-binary', de: 'Nicht-binär');
+        return context.tr3(tr: 'Non-binary', en: 'Non-binary', de: 'Nicht-binär');
       default:
-        return _copy(
+        return context.tr3(
           tr: 'Belirtilmedi',
           en: 'Unspecified',
           de: 'Nicht angegeben',
@@ -762,7 +750,7 @@ class _SignalScreenState extends State<SignalScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _copy(
+            context.tr3(
               tr: 'Sohbet açılamadı, tekrar dene.',
               en: 'Could not open the chat, try again.',
               de: 'Chat konnte nicht geöffnet werden, versuche es erneut.',
@@ -817,7 +805,7 @@ class _SignalScreenState extends State<SignalScreen>
               ),
               const SizedBox(height: 18),
               Text(
-                _copy(
+                context.tr3(
                   tr: 'Nasıl görünmek istersin?',
                   en: 'How do you want to appear?',
                   de: 'Wie möchtest du erscheinen?',
@@ -830,7 +818,7 @@ class _SignalScreenState extends State<SignalScreen>
               ),
               const SizedBox(height: 6),
               Text(
-                _copy(
+                context.tr3(
                   tr: '$otherName ile açılacak sohbette kimliğini seç.',
                   en: 'Choose your identity for the chat with $otherName.',
                   de: 'Wähle deine Identität für den Chat mit $otherName.',
@@ -846,8 +834,8 @@ class _SignalScreenState extends State<SignalScreen>
                   Expanded(
                     child: _buildAnonChoiceButton(
                       icon: Icons.person_off_rounded,
-                      title: _copy(tr: 'Anonim', en: 'Anonymous', de: 'Anonym'),
-                      subtitle: _copy(
+                      title: context.tr3(tr: 'Anonim', en: 'Anonymous', de: 'Anonym'),
+                      subtitle: context.tr3(
                         tr: 'Kimliğin gizli kalır',
                         en: 'Your identity stays hidden',
                         de: 'Deine Identität bleibt verborgen',
@@ -860,8 +848,8 @@ class _SignalScreenState extends State<SignalScreen>
                   Expanded(
                     child: _buildAnonChoiceButton(
                       icon: Icons.person_rounded,
-                      title: _copy(tr: 'Profil ile', en: 'With profile', de: 'Mit Profil'),
-                      subtitle: _copy(
+                      title: context.tr3(tr: 'Profil ile', en: 'With profile', de: 'Mit Profil'),
+                      subtitle: context.tr3(
                         tr: 'Adın ve fotoğrafın görünür',
                         en: 'Your name and photo visible',
                         de: 'Name und Foto sichtbar',
@@ -1036,7 +1024,7 @@ class _SignalScreenState extends State<SignalScreen>
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  _copy(
+                  context.tr3(
                     tr: 'Yeni bir eşleşme isteğin var',
                     en: 'You have a new match request',
                     de: 'Du hast eine neue Match-Anfrage',
@@ -1049,7 +1037,7 @@ class _SignalScreenState extends State<SignalScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _copy(
+                  context.tr3(
                     tr: 'Karar vermeden önce temel bilgileri burada görebilirsin.',
                     en: 'You can review the basics here before you decide.',
                     de: 'Hier kannst du dir die wichtigsten Infos ansehen, bevor du entscheidest.',
@@ -1143,7 +1131,7 @@ class _SignalScreenState extends State<SignalScreen>
                     _buildHeroStatChip(_modeName(otherMode)),
                     if (commonInterests.isNotEmpty)
                       _buildHeroStatChip(
-                        _copy(
+                        context.tr3(
                           tr: '${commonInterests.length} ortak ilgi',
                           en: '${commonInterests.length} shared interests',
                           de: '${commonInterests.length} gemeinsame Interessen',
@@ -1198,7 +1186,7 @@ class _SignalScreenState extends State<SignalScreen>
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  _copy(
+                                  context.tr3(
                                     tr: 'Eşleşme isteği reddedildi.',
                                     en: 'Match request declined.',
                                     de: 'Match-Anfrage abgelehnt.',
@@ -1216,7 +1204,7 @@ class _SignalScreenState extends State<SignalScreen>
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: Text(
-                          _copy(tr: 'Şimdilik geç', en: 'Not now', de: 'Nicht jetzt'),
+                          context.tr3(tr: 'Şimdilik geç', en: 'Not now', de: 'Nicht jetzt'),
                         ),
                       ),
                     ),
@@ -1247,7 +1235,7 @@ class _SignalScreenState extends State<SignalScreen>
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  _copy(
+                                  context.tr3(
                                     tr: 'Eşleşme şu anda tamamlanamadı.',
                                     en: 'The match could not be completed right now.',
                                     de: 'Das Match konnte gerade nicht abgeschlossen werden.',
@@ -1291,7 +1279,7 @@ class _SignalScreenState extends State<SignalScreen>
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: Text(
-                          _copy(tr: 'Sohbeti başlat', en: 'Start chat', de: 'Chat starten'),
+                          context.tr3(tr: 'Sohbeti başlat', en: 'Start chat', de: 'Chat starten'),
                         ),
                       ),
                     ),
@@ -1432,17 +1420,17 @@ class _SignalScreenState extends State<SignalScreen>
     final accent = _signalActive ? AppColors.primary : AppColors.modeSosyal;
     final statusText = _signalActive
         ? (_scanning
-              ? _copy(
+              ? context.tr3(
                   tr: 'Tarama s\u00fcr\u00fcyor',
                   en: 'Scanning in progress',
                   de: 'Scan l\u00e4uft',
                 )
-              : _copy(
+              : context.tr3(
                   tr: 'Radar aktif',
                   en: 'Radar is active',
                   de: 'Radar ist aktiv',
                 ))
-        : _copy(
+        : context.tr3(
             tr: 'Radar kapal\u0131',
             en: 'Radar is off',
             de: 'Radar ist aus',
@@ -1503,7 +1491,7 @@ class _SignalScreenState extends State<SignalScreen>
               ),
               const Spacer(),
               Text(
-                _copy(tr: '\u015eimdi', en: 'Now', de: 'Jetzt'),
+                context.tr3(tr: '\u015eimdi', en: 'Now', de: 'Jetzt'),
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.38),
                   fontWeight: FontWeight.w700,
@@ -1514,7 +1502,7 @@ class _SignalScreenState extends State<SignalScreen>
           ),
           const SizedBox(height: 14),
           Text(
-            _copy(
+            context.tr3(
               tr: 'Yak\u0131ndaki uyumlu insanlar\u0131 an\u0131nda tara',
               en: 'Scan for compatible people around you in real time',
               de: 'Scanne kompatible Menschen in deiner N\u00e4he in Echtzeit',
@@ -1528,7 +1516,7 @@ class _SignalScreenState extends State<SignalScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            _copy(
+            context.tr3(
               tr:
                   'Sinyal a\u00e7\u0131kken radar canl\u0131 olarak yak\u0131ndaki ki\u015fileri, e\u015fle\u015fme ihtimalini ve bulu\u015fma i\u00e7in uygun noktalar\u0131 g\u00f6sterir.',
               en:
@@ -1548,21 +1536,21 @@ class _SignalScreenState extends State<SignalScreen>
             runSpacing: 8,
             children: [
               _buildHeroStatChip(
-                _copy(
+                context.tr3(
                   tr: '${_nearbyPeople.length} menzilde',
                   en: '${_nearbyPeople.length} in range',
                   de: '${_nearbyPeople.length} in Reichweite',
                 ),
               ),
               _buildHeroStatChip(
-                _copy(
+                context.tr3(
                   tr: _shareProfile ? 'Profil g\u00f6r\u00fcn\u00fcr' : 'Anonim mod',
                   en: _shareProfile ? 'Profile visible' : 'Anonymous mode',
                   de: _shareProfile ? 'Profil sichtbar' : 'Anonymer Modus',
                 ),
               ),
               _buildHeroStatChip(
-                _copy(tr: '800m alan', en: '800m radius', de: '800m Radius'),
+                context.tr3(tr: '800m alan', en: '800m radius', de: '800m Radius'),
               ),
             ],
           ),
@@ -1613,7 +1601,7 @@ class _SignalScreenState extends State<SignalScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _copy(
+                    context.tr3(
                       tr: 'Şu an için niyet at',
                       en: 'Drop an instant intent',
                       de: 'Spontane Absicht senden',
@@ -1627,7 +1615,7 @@ class _SignalScreenState extends State<SignalScreen>
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    _copy(
+                    context.tr3(
                       tr: 'Anlık etkinlik aç — yakındaki uyumlular görsün',
                       en: 'Open an instant activity for nearby people',
                       de: 'Spontane Aktivität für Personen in der Nähe',
@@ -2604,12 +2592,12 @@ class _SignalScreenState extends State<SignalScreen>
                     ),
               label: Text(
                 _isMatchPending
-                    ? _copy(
+                    ? context.tr3(
                         tr: 'Sohbet açılıyor…',
                         en: 'Opening chat…',
                         de: 'Chat wird geöffnet…',
                       )
-                    : _copy(
+                    : context.tr3(
                         tr: 'Anonim Sohbet Başlat',
                         en: 'Start Anonymous Chat',
                         de: 'Anonymer Chat starten',
@@ -2641,7 +2629,7 @@ class _SignalScreenState extends State<SignalScreen>
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    _copy(
+                    context.tr3(
                       tr: 'Önce anonim tanışın. Eşleşme veya arkadaşlık isteği sohbet içinden hazır olduğunda gönderilebilir.',
                       en: 'Meet anonymously first. Match or friend request can be sent from inside the chat when both feel ready.',
                       de: 'Lerne dich erst anonym kennen. Match- oder Freundschaftsanfrage geht später im Chat.',

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../localization/app_localizations.dart';
 import '../../theme/colors.dart';
@@ -6,33 +6,15 @@ import '../../theme/colors.dart';
 class TermsScreen extends StatelessWidget {
   const TermsScreen({super.key});
 
-  String _copy(
-    BuildContext context, {
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    switch (context.l10n.languageCode) {
-      case 'en':
-        return en;
-      case 'de':
-        return de;
-      default:
-        return tr;
-    }
-  }
-
   List<Map<String, String>> _sections(BuildContext context) {
     return [
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '1. Hizmet tanımı',
           en: '1. Description of the service',
           de: '1. Beschreibung des Dienstes',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'PulseCity, şehirdeki sosyal hareketi ve mekânsal bağlamı gerçek zamanlı analiz ederek kişiselleştirilmiş şehir keşfi sunan bir urban intelligence uygulamasıdır.',
           en:
@@ -42,14 +24,12 @@ class TermsScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '2. Kullanıcı uygunluğu',
           en: '2. Eligibility',
           de: '2. Nutzungsberechtigung',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'PulseCity kullanmak için en az 18 yaşında olmanız gerekir. Hesap bilgilerinizin doğru, güncel ve size ait olduğunu taahhüt edersiniz.',
           en:
@@ -59,14 +39,12 @@ class TermsScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '3. Konum ve gizlilik',
           en: '3. Location and privacy',
           de: '3. Standort und Datenschutz',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'PulseCity, öneri ve sosyal alan işlevleri için konum verilerini kullanır. Kullanım, uygulama izinleriniz, ghost mode tercihiniz, görünürlük seviyeniz ve gizlilik ayarlarınızla sınırlanır.',
           en:
@@ -76,14 +54,12 @@ class TermsScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '4. Yasaklı davranışlar',
           en: '4. Prohibited behavior',
           de: '4. Verbotenes Verhalten',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'Şu davranışlar yasaktır:\n\n• Taciz, tehdit, nefret söylemi veya ayrımcılık\n• Sahte profil, kimlik taklidi veya dolandırıcılık\n• Açık rıza olmadan başkalarına ait veri veya medya paylaşımı\n• Sistemi manipüle etmeye yönelik otomasyon, spam veya kötüye kullanım\n• Yasalara aykırı faaliyetler',
           en:
@@ -93,14 +69,12 @@ class TermsScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '5. İçerik ve moderasyon',
           en: '5. Content and moderation',
           de: '5. Inhalte und Moderation',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'Paylaşımlarınız, yorumlarınız ve durumlarınız topluluk güvenliği için denetlenebilir. PulseCity, raporlanan veya riskli görünen içerikleri inceleme, sınırlama veya kaldırma hakkını saklı tutar.',
           en:
@@ -110,14 +84,12 @@ class TermsScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '6. Hesap güvenliği',
           en: '6. Account security',
           de: '6. Kontosicherheit',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'Hesabınızın güvenliğinden, cihaz erişiminizden ve şifrenizin korunmasından siz sorumlusunuz. Yetkisiz erişim fark ettiğinizde destek ekibiyle hemen iletişime geçmelisiniz.',
           en:
@@ -127,14 +99,12 @@ class TermsScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '7. Hizmette değişiklik',
           en: '7. Changes to the service',
           de: '7. Änderungen am Dienst',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'PulseCity, ürün deneyimini, fiyatlandırmayı, özellikleri veya güvenlik politikalarını zaman içinde güncelleyebilir. Önemli değişiklikler uygulama içinde veya ilgili iletişim kanallarında duyurulur.',
           en:
@@ -144,14 +114,12 @@ class TermsScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '8. Sorumluluğun sınırı',
           en: '8. Limitation of liability',
           de: '8. Haftungsbeschränkung',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'PulseCity, şehirdeki anlık sinyaller ve öneriler için makul çaba gösterir; ancak tüm verilerin her zaman eksiksiz, kesintisiz veya hatasız olacağı garanti edilmez. Yasal olarak izin verilen ölçüde dolaylı zararlar için sorumluluk sınırlandırılır.',
           en:
@@ -161,14 +129,12 @@ class TermsScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '9. Hesabın askıya alınması ve silinmesi',
           en: '9. Suspension and deletion',
           de: '9. Sperrung und Löschung',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'Bu koşulları ihlal etmeniz halinde hesabınız geçici olarak sınırlandırılabilir, askıya alınabilir veya silinebilir. Siz de istediğiniz zaman uygulama ayarlarından hesabınızı silebilirsiniz.',
           en:
@@ -178,14 +144,12 @@ class TermsScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '10. İletişim',
           en: '10. Contact',
           de: '10. Kontakt',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'Bu koşullarla ilgili sorularınız için support@pulsecity.app adresine yazabilirsiniz.',
           en:
@@ -211,8 +175,7 @@ class TermsScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          _copy(
-            context,
+          context.tr3(
             tr: 'Kullanım Koşulları',
             en: 'Terms of Service',
             de: 'Nutzungsbedingungen',
@@ -239,8 +202,7 @@ class TermsScreen extends StatelessWidget {
                 border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
               ),
               child: Text(
-                _copy(
-                  context,
+                context.tr3(
                   tr: 'Bu koşullar, PulseCity hizmetini kullanırken uyacağınız temel kuralları ve hakları açıklar.',
                   en: 'These terms explain the core rules and rights that apply when you use the PulseCity service.',
                   de: 'Diese Bedingungen erklären die grundlegenden Regeln und Rechte für die Nutzung des PulseCity-Dienstes.',

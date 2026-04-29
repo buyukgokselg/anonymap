@@ -37,18 +37,6 @@ class _InboxScreenState extends State<InboxScreen> {
 
   String get _myUid => AuthService().currentUserId;
 
-  String _copy({
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (context.l10n.languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   Future<UserModel?> _getUser(String uid) {
     return _userFutures.putIfAbsent(uid, () => _firestoreService.getUser(uid));
   }
@@ -1122,7 +1110,7 @@ class _InboxScreenState extends State<InboxScreen> {
                 onPressed: () => Navigator.pop(context),
               ),
         title: Text(
-          _copy(tr: 'Mesajlar', en: 'Messages', de: 'Nachrichten'),
+          context.tr3(tr: 'Mesajlar', en: 'Messages', de: 'Nachrichten'),
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w800,
@@ -1136,7 +1124,7 @@ class _InboxScreenState extends State<InboxScreen> {
               color: Colors.white,
               size: 22,
             ),
-            tooltip: _copy(
+            tooltip: context.tr3(
               tr: 'Yeni mesaj',
               en: 'New message',
               de: 'Neue Nachricht',
@@ -1284,7 +1272,7 @@ class _InboxScreenState extends State<InboxScreen> {
                             Padding(
                               padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
                               child: Text(
-                                _copy(
+                                context.tr3(
                                   tr: 'Grup sohbetleri',
                                   en: 'Group chats',
                                   de: 'Gruppen-Chats',
@@ -1304,7 +1292,7 @@ class _InboxScreenState extends State<InboxScreen> {
                             Padding(
                               padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
                               child: Text(
-                                _copy(
+                                context.tr3(
                                   tr: 'Mesajlar',
                                   en: 'Messages',
                                   de: 'Nachrichten',

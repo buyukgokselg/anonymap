@@ -132,18 +132,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  String _copy({
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (context.l10n.languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   // ─── Privacy rollup ────────────────────────────────────────────────────────
   int get _privacyScore {
     var score = 38;
@@ -180,7 +168,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String get _privacySummary {
     if (_ghostMode) {
-      return _copy(
+      return context.tr3(
         tr:
             'Ghost mode açık. Canlı katkın gizleniyor ve görünürlüğün minimum seviyede tutuluyor.',
         en:
@@ -191,7 +179,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     if (_enableDifferentialPrivacy && _locationGranularity != 'exact') {
-      return _copy(
+      return context.tr3(
         tr:
             'Gizlilik ve keşif şu an dengede. Şehre katkı veriyorsun ama hassasiyet kontrollü.',
         en:
@@ -201,7 +189,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
 
-    return _copy(
+    return context.tr3(
       tr:
           'Daha açık bir profil paylaşıyorsun. Sosyal keşif güçlü, gizlilik seviyesi daha düşük.',
       en:
@@ -213,15 +201,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String get _visibilityStatus {
     if (_ghostMode) {
-      return _copy(tr: 'Ghost', en: 'Ghost', de: 'Ghost');
+      return context.tr3(tr: 'Ghost', en: 'Ghost', de: 'Ghost');
     }
     return _isVisible
-        ? _copy(tr: 'Görünür', en: 'Visible', de: 'Sichtbar')
-        : _copy(tr: 'Gizli', en: 'Hidden', de: 'Verborgen');
+        ? context.tr3(tr: 'Görünür', en: 'Visible', de: 'Sichtbar')
+        : context.tr3(tr: 'Gizli', en: 'Hidden', de: 'Verborgen');
   }
 
   String get _activityRadiusLabel {
-    return _copy(
+    return context.tr3(
       tr: '$_activityRadiusKm km çevre',
       en: '$_activityRadiusKm km radius',
       de: '$_activityRadiusKm km Radius',
@@ -230,10 +218,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String get _granularityLabel {
     return switch (_locationGranularity) {
-      'exact' => _copy(tr: 'Tam konum', en: 'Exact', de: 'Genau'),
-      'district' => _copy(tr: 'İlçe', en: 'District', de: 'Bezirk'),
-      'city' => _copy(tr: 'Şehir', en: 'City', de: 'Stadt'),
-      _ => _copy(tr: 'Yakın çevre', en: 'Nearby', de: 'Nahbereich'),
+      'exact' => context.tr3(tr: 'Tam konum', en: 'Exact', de: 'Genau'),
+      'district' => context.tr3(tr: 'İlçe', en: 'District', de: 'Bezirk'),
+      'city' => context.tr3(tr: 'Şehir', en: 'City', de: 'Stadt'),
+      _ => context.tr3(tr: 'Yakın çevre', en: 'Nearby', de: 'Nahbereich'),
     };
   }
 
@@ -264,12 +252,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SliverToBoxAdapter(child: _buildVerificationCta()),
               SliverToBoxAdapter(
                 child: _buildSectionHead(
-                  title: _copy(
+                  title: context.tr3(
                     tr: 'Canlı görünürlük',
                     en: 'Live visibility',
                     de: 'Live-Sichtbarkeit',
                   ),
-                  meta: _copy(
+                  meta: context.tr3(
                     tr: 'profilin şehirdeki ayak izi',
                     en: 'your footprint in the city',
                     de: 'dein Fußabdruck in der Stadt',
@@ -335,7 +323,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               SliverToBoxAdapter(
                 child: _buildSectionHead(
-                  title: _copy(
+                  title: context.tr3(
                     tr: 'Konum hassasiyeti',
                     en: 'Location precision',
                     de: 'Standortgenauigkeit',
@@ -362,7 +350,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               SliverToBoxAdapter(
                 child: _buildSectionHead(
-                  title: _copy(
+                  title: context.tr3(
                     tr: 'k-anonimlik',
                     en: 'k-anonymity',
                     de: 'k-Anonymität',
@@ -375,12 +363,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               SliverToBoxAdapter(
                 child: _buildSectionHead(
-                  title: _copy(
+                  title: context.tr3(
                     tr: 'Kimlik ve eşleşme',
                     en: 'Identity & matching',
                     de: 'Identität & Matching',
                   ),
-                  meta: _copy(
+                  meta: context.tr3(
                     tr: 'romantik filtre · görünürlük',
                     en: 'romantic filter · visibility',
                     de: 'Romantik-Filter · Sichtbarkeit',
@@ -390,7 +378,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SliverToBoxAdapter(child: _buildIdentityCard()),
               SliverToBoxAdapter(
                 child: _buildSectionHead(
-                  title: _copy(
+                  title: context.tr3(
                     tr: 'Etkinlik tercihleri',
                     en: 'Activity preferences',
                     de: 'Aktivitäts-Einstellungen',
@@ -402,12 +390,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: _buildToggleGroup([
                   _ToggleRowData(
                     icon: Icons.notifications_active_rounded,
-                    title: _copy(
+                    title: context.tr3(
                       tr: 'Etkinlik bildirimleri',
                       en: 'Activity notifications',
                       de: 'Aktivitäts-Benachrichtigungen',
                     ),
-                    subtitle: _copy(
+                    subtitle: context.tr3(
                       tr: 'davet, katılım, hatırlatma uyarıları',
                       en: 'invites, joins, reminders',
                       de: 'Einladungen, Beitritte, Erinnerungen',
@@ -423,12 +411,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   _ToggleRowData(
                     icon: Icons.verified_user_rounded,
-                    title: _copy(
+                    title: context.tr3(
                       tr: 'Kendi etkinliğimde otomatik onay',
                       en: 'Auto-approve on my activities',
                       de: 'Auto-Bestätigung meiner Aktivitäten',
                     ),
-                    subtitle: _copy(
+                    subtitle: context.tr3(
                       tr: 'isteyenleri elle onaylamadan ekibe alır',
                       en: 'lets requesters in without manual review',
                       de: 'lässt Anfragende ohne manuelle Prüfung beitreten',
@@ -442,12 +430,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   _ToggleRowData(
                     icon: Icons.event_available_rounded,
-                    title: _copy(
+                    title: context.tr3(
                       tr: 'Profilde etkinliklerim görünsün',
                       en: 'Show my activities on profile',
                       de: 'Meine Aktivitäten im Profil zeigen',
                     ),
-                    subtitle: _copy(
+                    subtitle: context.tr3(
                       tr: 'profil ekranında host olduğun etkinlikleri yayınlar',
                       en: 'publishes hosted activities on your profile',
                       de: 'zeigt deine Host-Aktivitäten im Profil an',
@@ -465,7 +453,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                   child: Text(
-                    _copy(
+                    context.tr3(
                       tr: 'Varsayılan keşif yarıçapı',
                       en: 'Default discovery radius',
                       de: 'Standard-Entdeckungsradius',
@@ -500,7 +488,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               SliverToBoxAdapter(
                 child: _buildSectionHead(
-                  title: _copy(
+                  title: context.tr3(
                     tr: 'Uygulama dili',
                     en: 'App language',
                     de: 'App-Sprache',
@@ -511,12 +499,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SliverToBoxAdapter(child: _buildLanguageRail()),
               SliverToBoxAdapter(
                 child: _buildSectionHead(
-                  title: _copy(
+                  title: context.tr3(
                     tr: 'Veri & hukuki',
                     en: 'Data & legal',
                     de: 'Daten & Recht',
                   ),
-                  meta: _copy(
+                  meta: context.tr3(
                     tr: 'politikalar, dışa aktarım',
                     en: 'policies, export',
                     de: 'Richtlinien, Export',
@@ -526,12 +514,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SliverToBoxAdapter(child: _buildLegalGroup()),
               SliverToBoxAdapter(
                 child: _buildSectionHead(
-                  title: _copy(
+                  title: context.tr3(
                     tr: 'Hesap',
                     en: 'Account',
                     de: 'Konto',
                   ),
-                  meta: _copy(
+                  meta: context.tr3(
                     tr: 'oturum · kalıcı işlemler',
                     en: 'session · permanent actions',
                     de: 'Sitzung · dauerhafte Aktionen',
@@ -604,7 +592,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       Text(
-                        _copy(
+                        context.tr3(
                           tr: 'profilin · veri · tercihler',
                           en: 'profile · data · preferences',
                           de: 'Profil · Daten · Einstellungen',
@@ -728,7 +716,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   child: Text(
-                    _copy(
+                    context.tr3(
                       tr: 'GİZLİLİK MERKEZİ',
                       en: 'PRIVACY CENTER',
                       de: 'PRIVATSPHÄRE',
@@ -819,30 +807,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final items = [
       _QuickStat(
         icon: Icons.visibility_rounded,
-        label: _copy(tr: 'Görünürlük', en: 'Visibility', de: 'Sichtbarkeit'),
+        label: context.tr3(tr: 'Görünürlük', en: 'Visibility', de: 'Sichtbarkeit'),
         value: _visibilityStatus,
         active: _isVisible && !_ghostMode,
         accent: AppColors.primary,
       ),
       _QuickStat(
         icon: Icons.blur_on_rounded,
-        label: _copy(tr: 'DP', en: 'DP', de: 'DP'),
+        label: context.tr3(tr: 'DP', en: 'DP', de: 'DP'),
         value: _enableDifferentialPrivacy
-            ? _copy(tr: 'Açık', en: 'On', de: 'An')
-            : _copy(tr: 'Kapalı', en: 'Off', de: 'Aus'),
+            ? context.tr3(tr: 'Açık', en: 'On', de: 'An')
+            : context.tr3(tr: 'Kapalı', en: 'Off', de: 'Aus'),
         active: _enableDifferentialPrivacy,
         accent: AppColors.neonCyan,
       ),
       _QuickStat(
         icon: Icons.groups_rounded,
-        label: _copy(tr: 'k-anon', en: 'k-anon', de: 'k-anon'),
+        label: context.tr3(tr: 'k-anon', en: 'k-anon', de: 'k-anon'),
         value: 'k=$_kAnonymityLevel',
         active: _kAnonymityLevel >= 4,
         accent: AppColors.modeSosyal,
       ),
       _QuickStat(
         icon: Icons.my_location_rounded,
-        label: _copy(tr: 'Konum', en: 'Location', de: 'Standort'),
+        label: context.tr3(tr: 'Konum', en: 'Location', de: 'Standort'),
         value: _granularityLabel,
         active: _locationGranularity != 'exact',
         accent: AppColors.modeSakinlik,
@@ -921,17 +909,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               end: Alignment.bottomRight,
             ),
             Icons.verified_rounded,
-            _copy(
+            context.tr3(
               tr: 'Profilin doğrulandı',
               en: 'Profile verified',
               de: 'Profil verifiziert',
             ),
-            _copy(
+            context.tr3(
               tr: 'Mavi rozet aktif. Discover akışında öne çıkıyorsun.',
               en: 'Blue badge active. You stand out in Discover.',
               de: 'Blaues Abzeichen aktiv. Du stichst in Discover hervor.',
             ),
-            _copy(
+            context.tr3(
               tr: 'Detayları gör',
               en: 'View details',
               de: 'Details ansehen',
@@ -945,17 +933,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               end: Alignment.bottomRight,
             ),
             Icons.hourglass_top_rounded,
-            _copy(
+            context.tr3(
               tr: 'Doğrulama incelemede',
               en: 'Verification in review',
               de: 'Verifizierung in Prüfung',
             ),
-            _copy(
+            context.tr3(
               tr: 'Selfie\'n moderasyon kuyruğunda. Sonuç bildirimle gelecek.',
               en: 'Your selfie is queued. We\'ll notify you with the result.',
               de: 'Dein Selfie wird geprüft. Wir benachrichtigen dich.',
             ),
-            _copy(
+            context.tr3(
               tr: 'Durumu yenile',
               en: 'Refresh status',
               de: 'Status aktualisieren',
@@ -969,17 +957,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               end: Alignment.bottomRight,
             ),
             Icons.refresh_rounded,
-            _copy(
+            context.tr3(
               tr: 'Doğrulama reddedildi',
               en: 'Verification rejected',
               de: 'Verifizierung abgelehnt',
             ),
-            _copy(
+            context.tr3(
               tr: 'Tekrar dene — yüzün ve hareketin net görünsün.',
               en: 'Try again — make sure face and gesture are clear.',
               de: 'Bitte nochmal — Gesicht und Geste deutlich.',
             ),
-            _copy(
+            context.tr3(
               tr: 'Yeniden gönder',
               en: 'Submit again',
               de: 'Erneut senden',
@@ -992,17 +980,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               end: Alignment.bottomRight,
             ),
             Icons.verified_user_outlined,
-            _copy(
+            context.tr3(
               tr: 'Mavi rozeti kazan',
               en: 'Earn the blue badge',
               de: 'Hol dir das blaue Abzeichen',
             ),
-            _copy(
+            context.tr3(
               tr: 'Hızlı bir selfie ile profilin doğrulansın, Discover\'da öne çık.',
               en: 'Quick selfie to verify, stand out in Discover.',
               de: 'Schnelles Selfie, sticht in Discover hervor.',
             ),
-            _copy(
+            context.tr3(
               tr: 'Doğrulamaya başla',
               en: 'Start verification',
               de: 'Verifizierung starten',
@@ -1485,10 +1473,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String _kAnonLabel(int option) {
     return switch (option) {
-      3 => _copy(tr: 'DENGE', en: 'BALANCED', de: 'AUSGEWOGEN'),
-      4 => _copy(tr: 'ORTA', en: 'MEDIUM', de: 'MITTEL'),
-      5 => _copy(tr: 'YÜKSEK', en: 'HIGH', de: 'HOCH'),
-      _ => _copy(tr: 'MAKS', en: 'MAX', de: 'MAX'),
+      3 => context.tr3(tr: 'DENGE', en: 'BALANCED', de: 'AUSGEWOGEN'),
+      4 => context.tr3(tr: 'ORTA', en: 'MEDIUM', de: 'MITTEL'),
+      5 => context.tr3(tr: 'YÜKSEK', en: 'HIGH', de: 'HOCH'),
+      _ => context.tr3(tr: 'MAKS', en: 'MAX', de: 'MAX'),
     };
   }
 
@@ -1552,7 +1540,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              _copy(
+              context.tr3(
                 tr:
                     'Romantik eşleşme filtresi. Arkadaşlık ve görünürlük bundan bağımsız.',
                 en:
@@ -1667,7 +1655,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case 'nonbinary':
         return context.l10n.t('gender_nonbinary');
       default:
-        return _copy(tr: 'Belirtilmedi', en: 'Unspecified', de: 'Nicht angegeben');
+        return context.tr3(tr: 'Belirtilmedi', en: 'Unspecified', de: 'Nicht angegeben');
     }
   }
 
@@ -1797,7 +1785,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.description_rounded,
               accent: AppColors.modeTopluluk,
               title: l10n.t('terms_of_service'),
-              subtitle: _copy(
+              subtitle: context.tr3(
                 tr: 'Kullanım koşullarını oku',
                 en: 'Read the terms of service',
                 de: 'Nutzungsbedingungen lesen',
@@ -1812,7 +1800,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.privacy_tip_rounded,
               accent: AppColors.neonCyan,
               title: l10n.t('privacy_policy'),
-              subtitle: _copy(
+              subtitle: context.tr3(
                 tr: 'Verinin nasıl işlendiğini oku',
                 en: 'How your data is handled',
                 de: 'Wie deine Daten verarbeitet werden',
@@ -1863,7 +1851,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.logout_rounded,
               accent: AppColors.modeSosyal,
               title: l10n.t('logout'),
-              subtitle: _copy(
+              subtitle: context.tr3(
                 tr: 'Bu cihazdan çıkış yap',
                 en: 'Sign out on this device',
                 de: 'Auf diesem Gerät abmelden',
@@ -1875,7 +1863,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.delete_forever_rounded,
               accent: AppColors.error,
               title: l10n.t('delete_account'),
-              subtitle: _copy(
+              subtitle: context.tr3(
                 tr: 'Hesap ve tüm profil verisi kalıcı silinir',
                 en: 'Account and all profile data permanently removed',
                 de: 'Konto und alle Profildaten dauerhaft entfernt',

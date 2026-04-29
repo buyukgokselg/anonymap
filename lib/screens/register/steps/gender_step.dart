@@ -17,37 +17,23 @@ class GenderStep extends StatelessWidget {
   final RegistrationDraft draft;
   final VoidCallback onChanged;
 
-  String _copy(
-    BuildContext context, {
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (AppLocalizations.of(context).languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     final options = <_GenderOption>[
       _GenderOption(
         id: 'female',
         icon: Icons.female_rounded,
-        label: _copy(context, tr: 'Kadın', en: 'Woman', de: 'Frau'),
+        label: context.tr3(tr: 'Kadın', en: 'Woman', de: 'Frau'),
       ),
       _GenderOption(
         id: 'male',
         icon: Icons.male_rounded,
-        label: _copy(context, tr: 'Erkek', en: 'Man', de: 'Mann'),
+        label: context.tr3(tr: 'Erkek', en: 'Man', de: 'Mann'),
       ),
       _GenderOption(
         id: 'nonbinary',
         icon: Icons.transgender_rounded,
-        label: _copy(
-          context,
+        label: context.tr3(
           tr: 'Non-binary',
           en: 'Non-binary',
           de: 'Non-binary',
@@ -59,8 +45,7 @@ class GenderStep extends StatelessWidget {
       heroIcon: Icons.diversity_3_rounded,
       titleSpans: [
         TextSpan(
-          text: _copy(
-            context,
+          text: context.tr3(
             tr: 'Kendini nasıl\n',
             en: 'How do you\n',
             de: 'Wie identifizierst\n',
@@ -68,8 +53,7 @@ class GenderStep extends StatelessWidget {
           style: const TextStyle(color: Colors.white),
         ),
         TextSpan(
-          text: _copy(
-            context,
+          text: context.tr3(
             tr: 'tanımlıyorsun?',
             en: 'identify?',
             de: 'du dich?',
@@ -77,8 +61,7 @@ class GenderStep extends StatelessWidget {
           style: const TextStyle(color: AppColors.primary),
         ),
       ],
-      subtitle: _copy(
-        context,
+      subtitle: context.tr3(
         tr: 'Sonradan değiştirebilirsin.',
         en: 'You can change this later.',
         de: 'Du kannst das später ändern.',
@@ -122,8 +105,7 @@ class GenderStep extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    _copy(
-                      context,
+                    context.tr3(
                       tr: 'Cinsiyetin profilinde gösterilmez. Sadece eşleşme önerileri için kullanılır.',
                       en: 'Your gender is not shown on your profile. It is only used for match recommendations.',
                       de: 'Dein Geschlecht wird nicht in deinem Profil angezeigt. Es wird nur für Empfehlungen verwendet.',

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../localization/app_localizations.dart';
 import '../../theme/colors.dart';
@@ -6,33 +6,15 @@ import '../../theme/colors.dart';
 class PrivacyScreen extends StatelessWidget {
   const PrivacyScreen({super.key});
 
-  String _copy(
-    BuildContext context, {
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    switch (context.l10n.languageCode) {
-      case 'en':
-        return en;
-      case 'de':
-        return de;
-      default:
-        return tr;
-    }
-  }
-
   List<Map<String, String>> _sections(BuildContext context) {
     return [
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '1. Veri sorumlusu',
           en: '1. Data controller',
           de: '1. Verantwortliche Stelle',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'Verilerinizin sorumlusu PulseCity GmbH\'dir.\n\nAdres: Hamburg, Almanya\nE-posta: privacy@pulsecity.app\nVeri koruma sorumlusu: dpo@pulsecity.app',
           en:
@@ -42,14 +24,12 @@ class PrivacyScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '2. Toplanan veriler',
           en: '2. Data we collect',
           de: '2. Erhobene Daten',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'Hesap bilgileri: e-posta adresi, şifre özeti, yaş aralığı, cinsiyet ve ilgi alanları.\n\nKonum verileri: yalnızca uygulama aktifken ve izninizle kullanılan GPS koordinatları.\n\nKullanım verileri: seçilen mod, etkileşimler, kalış süresi ve ürün sinyalleri.\n\nKullanıcı içerikleri: paylaşımlar, shorts, durumlar, yorumlar ve raporlar.',
           en:
@@ -59,14 +39,12 @@ class PrivacyScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '3. İşleme amaçları',
           en: '3. Why we process data',
           de: '3. Zwecke der Verarbeitung',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               '• Pulse Score ve şehir yoğunluk sinyallerini hesaplamak\n• Kişiselleştirilmiş yer ve zaman önerileri sunmak\n• Sosyal uyumluluk ve nearby akışlarını çalıştırmak\n• Güvenlik, moderasyon ve hata tespiti sağlamak\n• Yasal yükümlülükleri yerine getirmek',
           en:
@@ -76,14 +54,12 @@ class PrivacyScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '4. Gizlilik teknolojileri',
           en: '4. Privacy technologies',
           de: '4. Datenschutztechnologien',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'PulseCity şu korumaları kullanır:\n\nDifferential privacy yaklaşımı, toplu çıktılarda bireysel davranışların ayrıştırılmasını zorlaştırır.\n\nk-anonymity eşiği, yeterli kullanıcı yoğunluğu olmadan hassas görünürlüğü sınırlar.\n\nGranularity control ile görünürlük hassasiyetini şehir, ilçe veya yakın çevre düzeyinde ayarlayabilirsiniz.\n\nGhost mode aktifken canlı konum katkısı kapatılır.\n\nTüm istemci-sunucu iletişimi şifrelenir.',
           en:
@@ -93,14 +69,12 @@ class PrivacyScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '5. Ghost mode',
           en: '5. Ghost mode',
           de: '5. Ghost Mode',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'Ghost mode açıkken canlı görünürlüğünüz kapanır. Diğer kullanıcılar sizi nearby akışlarında görmez, katkılarınız anlık sosyal alan hesaplarına dahil edilmez ve uygulamayı daha pasif bir modda kullanabilirsiniz.',
           en:
@@ -110,14 +84,12 @@ class PrivacyScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '6. Veri paylaşımı',
           en: '6. Data sharing',
           de: '6. Datenweitergabe',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'Kişisel verileriniz üçüncü taraflara bireysel kullanıcı düzeyinde satılmaz veya paylaşılmaz.\n\nAnonim ve toplulaştırılmış veriler, ürün içi analiz, şehir zekâsı içgörüleri, mekan raporları ve güvenlik operasyonları için kullanılabilir.',
           en:
@@ -127,14 +99,12 @@ class PrivacyScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '7. Saklama süreleri',
           en: '7. Retention periods',
           de: '7. Speicherfristen',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'Ham konum ve yüksek hassasiyetli varlık kayıtları kısa ömürlü tutulur.\n\nHesap verileri hesabın aktif kaldığı sürece saklanır.\n\nİçerik ve etkileşim kayıtları ürün işlevi ve güvenlik ihtiyaçlarına göre sınırlı sürelerle korunur.\n\nSilme taleplerinden sonra 72 saatlik yedek temizleme politikası uygulanır.',
           en:
@@ -144,14 +114,12 @@ class PrivacyScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '8. Haklarınız',
           en: '8. Your rights',
           de: '8. Ihre Rechte',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'GDPR kapsamında erişim, düzeltme, silme, taşınabilirlik, itiraz ve işlemeyi sınırlandırma haklarına sahipsiniz.\n\nVeri dışa aktarımı ve hesap silme taleplerinizi uygulama içinden veya privacy@pulsecity.app üzerinden iletebilirsiniz.',
           en:
@@ -161,14 +129,12 @@ class PrivacyScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '9. İzleme ve güvenlik',
           en: '9. Tracking and security',
           de: '9. Tracking und Sicherheit',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'PulseCity reklam izleme SDK\'ları çalıştırmaz. Operasyonel hata kayıtları, güvenlik olayları ve kötüye kullanım sinyalleri sınırlı ve kontrollü şekilde tutulabilir.',
           en:
@@ -178,14 +144,12 @@ class PrivacyScreen extends StatelessWidget {
         ),
       },
       {
-        'title': _copy(
-          context,
+        'title': context.tr3(
           tr: '10. İletişim ve şikayet',
           en: '10. Contact and complaints',
           de: '10. Kontakt und Beschwerden',
         ),
-        'content': _copy(
-          context,
+        'content': context.tr3(
           tr:
               'Gizlilikle ilgili sorularınız için privacy@pulsecity.app adresine yazabilirsiniz.\n\nAyrıca yetkili veri koruma otoritesine şikayette bulunma hakkınız saklıdır.',
           en:
@@ -211,8 +175,7 @@ class PrivacyScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          _copy(
-            context,
+          context.tr3(
             tr: 'Gizlilik Politikası',
             en: 'Privacy Policy',
             de: 'Datenschutzerklärung',
@@ -239,8 +202,7 @@ class PrivacyScreen extends StatelessWidget {
                 border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
               ),
               child: Text(
-                _copy(
-                  context,
+                context.tr3(
                   tr: 'PulseCity gizliliği ürün tasarımının merkezine koyar. Bu politika, hangi verilerin toplandığını, neden kullanıldığını ve kontrolün nasıl sizde kaldığını açıklar.',
                   en: 'PulseCity places privacy at the center of the product experience. This policy explains what data is collected, why it is used, and how control stays with you.',
                   de: 'PulseCity stellt Datenschutz in den Mittelpunkt des Produkterlebnisses. Diese Richtlinie erklärt, welche Daten erhoben werden, warum sie genutzt werden und wie die Kontrolle bei Ihnen bleibt.',

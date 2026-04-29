@@ -23,18 +23,6 @@ class WelcomeStep extends StatelessWidget {
   final VoidCallback onLoginInstead;
   final bool isGoogleLoading;
 
-  String _copy(BuildContext context, {
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (AppLocalizations.of(context).languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -85,8 +73,7 @@ class WelcomeStep extends StatelessWidget {
                 ),
                 children: [
                   TextSpan(
-                    text: _copy(
-                      context,
+                    text: context.tr3(
                       tr: 'Anonim. Yakın.\n',
                       en: 'Anonymous. Close.\n',
                       de: 'Anonym. Nah.\n',
@@ -94,8 +81,7 @@ class WelcomeStep extends StatelessWidget {
                     style: const TextStyle(color: Colors.white),
                   ),
                   TextSpan(
-                    text: _copy(
-                      context,
+                    text: context.tr3(
                       tr: 'Gerçek.',
                       en: 'Real.',
                       de: 'Echt.',
@@ -109,8 +95,7 @@ class WelcomeStep extends StatelessWidget {
             const SizedBox(height: 14),
 
             Text(
-              _copy(
-                context,
+              context.tr3(
                 tr: 'Şehrin nabzındaki insanları keşfet, isimsiz tanış, hazır olduğunda kendini aç.',
                 en: 'Discover people on the city pulse, meet anonymously, open up when you are ready.',
                 de: 'Entdecke Menschen im Puls der Stadt, lerne anonym kennen und öffne dich, wenn du bereit bist.',
@@ -139,8 +124,7 @@ class WelcomeStep extends StatelessWidget {
                   elevation: 0,
                 ),
                 child: Text(
-                  _copy(
-                    context,
+                  context.tr3(
                     tr: 'E-posta ile başla',
                     en: 'Continue with email',
                     de: 'Mit E-Mail starten',
@@ -188,8 +172,7 @@ class WelcomeStep extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            _copy(
-                              context,
+                            context.tr3(
                               tr: 'Google ile devam et',
                               en: 'Continue with Google',
                               de: 'Mit Google fortfahren',
@@ -212,7 +195,7 @@ class WelcomeStep extends StatelessWidget {
               child: Wrap(
                 children: [
                   Text(
-                    '${_copy(context, tr: "Zaten hesabın var mı?", en: "Already have an account?", de: "Hast du schon ein Konto?")} ',
+                    '${context.tr3(tr: "Zaten hesabın var mı?", en: "Already have an account?", de: "Hast du schon ein Konto?")} ',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.45),
                       fontSize: 14,
@@ -221,8 +204,7 @@ class WelcomeStep extends StatelessWidget {
                   GestureDetector(
                     onTap: onLoginInstead,
                     child: Text(
-                      _copy(
-                        context,
+                      context.tr3(
                         tr: 'Giriş yap',
                         en: 'Log in',
                         de: 'Anmelden',

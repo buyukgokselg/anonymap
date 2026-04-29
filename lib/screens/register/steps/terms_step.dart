@@ -22,35 +22,21 @@ class TermsStep extends StatefulWidget {
 }
 
 class _TermsStepState extends State<TermsStep> {
-  String _copy(
-    BuildContext context, {
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (AppLocalizations.of(context).languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     return RegisterStepScaffold(
       heroIcon: Icons.verified_user_rounded,
       titleSpans: [
         TextSpan(
-          text: _copy(context, tr: 'Son ', en: 'Last ', de: 'Letzter '),
+          text: context.tr3(tr: 'Son ', en: 'Last ', de: 'Letzter '),
           style: const TextStyle(color: Colors.white),
         ),
         TextSpan(
-          text: _copy(context, tr: 'adım', en: 'step', de: 'Schritt'),
+          text: context.tr3(tr: 'adım', en: 'step', de: 'Schritt'),
           style: const TextStyle(color: AppColors.primary),
         ),
       ],
-      subtitle: _copy(
-        context,
+      subtitle: context.tr3(
         tr: 'Devam etmeden önce iki küçük onay.',
         en: 'Two small confirmations before we continue.',
         de: 'Zwei kleine Bestätigungen, bevor wir weitermachen.',
@@ -66,8 +52,7 @@ class _TermsStepState extends State<TermsStep> {
               widget.onChanged();
             },
             content: Text(
-              _copy(
-                context,
+              context.tr3(
                 tr: '18 yaşından büyük olduğumu beyan ederim.',
                 en: 'I confirm that I am over 18 years old.',
                 de: 'Ich bestätige, dass ich über 18 Jahre alt bin.',
@@ -91,7 +76,7 @@ class _TermsStepState extends State<TermsStep> {
             content: Wrap(
               children: [
                 Text(
-                  '${_copy(context, tr: "Devam ederek", en: "By continuing", de: "Indem ich fortfahre")} ',
+                  '${context.tr3(tr: "Devam ederek", en: "By continuing", de: "Indem ich fortfahre")} ',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.white.withValues(alpha: 0.85),
@@ -103,8 +88,7 @@ class _TermsStepState extends State<TermsStep> {
                     MaterialPageRoute(builder: (_) => const TermsScreen()),
                   ),
                   child: Text(
-                    _copy(
-                      context,
+                    context.tr3(
                       tr: 'Kullanım Koşulları',
                       en: 'Terms of Service',
                       de: 'Nutzungsbedingungen',
@@ -120,7 +104,7 @@ class _TermsStepState extends State<TermsStep> {
                   ),
                 ),
                 Text(
-                  ' ${_copy(context, tr: "ve", en: "and", de: "und")} ',
+                  ' ${context.tr3(tr: "ve", en: "and", de: "und")} ',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.white.withValues(alpha: 0.85),
@@ -132,8 +116,7 @@ class _TermsStepState extends State<TermsStep> {
                     MaterialPageRoute(builder: (_) => const PrivacyScreen()),
                   ),
                   child: Text(
-                    _copy(
-                      context,
+                    context.tr3(
                       tr: 'Gizlilik Politikası',
                       en: 'Privacy Policy',
                       de: 'Datenschutzrichtlinie',
@@ -149,7 +132,7 @@ class _TermsStepState extends State<TermsStep> {
                   ),
                 ),
                 Text(
-                  _copy(context, tr: "'nı kabul ediyorum.", en: " I accept.", de: " stimme ich zu."),
+                  context.tr3(tr: "'nı kabul ediyorum.", en: " I accept.", de: " stimme ich zu."),
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.white.withValues(alpha: 0.85),
@@ -179,8 +162,7 @@ class _TermsStepState extends State<TermsStep> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    _copy(
-                      context,
+                    context.tr3(
                       tr: 'Hesabını oluşturmaya hazırsın.',
                       en: 'You are ready to create your account.',
                       de: 'Du bist bereit, dein Konto zu erstellen.',

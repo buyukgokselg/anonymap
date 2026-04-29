@@ -44,19 +44,6 @@ class _IdentityStepState extends State<IdentityStep> {
     widget.onChanged();
   }
 
-  String _copy(
-    BuildContext context, {
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (AppLocalizations.of(context).languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   Future<void> _openBirthDatePicker() async {
     final now = DateTime.now();
     final initial =
@@ -93,8 +80,7 @@ class _IdentityStepState extends State<IdentityStep> {
       heroIcon: Icons.person_outline_rounded,
       titleSpans: [
         TextSpan(
-          text: _copy(
-            context,
+          text: context.tr3(
             tr: 'Sana nasıl\n',
             en: 'What should we\n',
             de: 'Wie sollen wir dich\n',
@@ -102,8 +88,7 @@ class _IdentityStepState extends State<IdentityStep> {
           style: const TextStyle(color: Colors.white),
         ),
         TextSpan(
-          text: _copy(
-            context,
+          text: context.tr3(
             tr: 'hitap edelim?',
             en: 'call you?',
             de: 'nennen?',
@@ -111,8 +96,7 @@ class _IdentityStepState extends State<IdentityStep> {
           style: const TextStyle(color: AppColors.primary),
         ),
       ],
-      subtitle: _copy(
-        context,
+      subtitle: context.tr3(
         tr: 'Sadece sen ve eşleştiğin kişiler görür. Doğum tarihin ise asla paylaşılmaz.',
         en: 'Only you and your matches see this. Your birth date is never shared.',
         de: 'Nur du und deine Matches sehen das. Dein Geburtsdatum wird nie geteilt.',
@@ -122,8 +106,7 @@ class _IdentityStepState extends State<IdentityStep> {
         children: [
           RegisterTextField(
             controller: _nameController,
-            hint: _copy(
-              context,
+            hint: context.tr3(
               tr: 'Adın',
               en: 'Your first name',
               de: 'Dein Vorname',
@@ -164,8 +147,7 @@ class _IdentityStepState extends State<IdentityStep> {
                   Expanded(
                     child: Text(
                       birthDate == null
-                          ? _copy(
-                              context,
+                          ? context.tr3(
                               tr: 'Doğum tarihin',
                               en: 'Your birth date',
                               de: 'Dein Geburtsdatum',
@@ -203,8 +185,7 @@ class _IdentityStepState extends State<IdentityStep> {
                   const Text('🎂', style: TextStyle(fontSize: 14)),
                   const SizedBox(width: 6),
                   Text(
-                    _copy(
-                      context,
+                    context.tr3(
                       tr: '$age yaşındasın',
                       en: 'You are $age',
                       de: 'Du bist $age',
@@ -227,8 +208,7 @@ class _IdentityStepState extends State<IdentityStep> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    _copy(
-                      context,
+                    context.tr3(
                       tr: 'Kayıt için en az 18 yaşında olmalısın.',
                       en: 'You must be at least 18 to sign up.',
                       de: 'Du musst mindestens 18 sein, um dich zu registrieren.',

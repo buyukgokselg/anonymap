@@ -18,56 +18,38 @@ class ModeStep extends StatelessWidget {
   final RegistrationDraft draft;
   final VoidCallback onChanged;
 
-  String _copy(
-    BuildContext context, {
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (AppLocalizations.of(context).languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   String _modeTitle(BuildContext context, String id) {
     return switch (id) {
-      'flirt' => _copy(context, tr: 'Flört', en: 'Flirt', de: 'Flirt'),
-      'friends' => _copy(
-        context,
+      'flirt' => context.tr3(tr: 'Flört', en: 'Flirt', de: 'Flirt'),
+      'friends' => context.tr3(
         tr: 'Arkadaşlık',
         en: 'Friendship',
         de: 'Freundschaft',
       ),
-      'fun' => _copy(context, tr: 'Eğlence', en: 'Fun', de: 'Spaß'),
-      'chill' => _copy(context, tr: 'Chill', en: 'Chill', de: 'Chill'),
+      'fun' => context.tr3(tr: 'Eğlence', en: 'Fun', de: 'Spaß'),
+      'chill' => context.tr3(tr: 'Chill', en: 'Chill', de: 'Chill'),
       _ => id,
     };
   }
 
   String _modeDescription(BuildContext context, String id) {
     return switch (id) {
-      'flirt' => _copy(
-        context,
+      'flirt' => context.tr3(
         tr: 'Romantik ilgiye açığım — 1:1 kimya arıyorum.',
         en: 'Open to romance — looking for 1:1 chemistry.',
         de: 'Offen für Romantik — auf der Suche nach 1:1 Chemie.',
       ),
-      'friends' => _copy(
-        context,
+      'friends' => context.tr3(
         tr: 'Yeni arkadaşlar, platonik takılmalar.',
         en: 'New friends, platonic hangouts.',
         de: 'Neue Freunde, platonische Treffen.',
       ),
-      'fun' => _copy(
-        context,
+      'fun' => context.tr3(
         tr: 'Grup, parti, etkinlik partneri arıyorum.',
         en: 'Group, party, looking for an event partner.',
         de: 'Gruppe, Party, suche einen Eventpartner.',
       ),
-      'chill' => _copy(
-        context,
+      'chill' => context.tr3(
         tr: 'Baskısız tanış, doğal akış — açığım ama aramıyorum.',
         en: 'No pressure, natural flow — open but not searching.',
         de: 'Kein Druck, natürlich — offen, aber nicht auf der Suche.',
@@ -84,8 +66,7 @@ class ModeStep extends StatelessWidget {
       heroIcon: Icons.tune_rounded,
       titleSpans: [
         TextSpan(
-          text: _copy(
-            context,
+          text: context.tr3(
             tr: 'Burada ne\n',
             en: 'What are you\n',
             de: 'Wonach suchst\n',
@@ -93,8 +74,7 @@ class ModeStep extends StatelessWidget {
           style: const TextStyle(color: Colors.white),
         ),
         TextSpan(
-          text: _copy(
-            context,
+          text: context.tr3(
             tr: 'arıyorsun?',
             en: 'looking for?',
             de: 'du hier?',
@@ -102,8 +82,7 @@ class ModeStep extends StatelessWidget {
           style: const TextStyle(color: AppColors.primary),
         ),
       ],
-      subtitle: _copy(
-        context,
+      subtitle: context.tr3(
         tr: 'Bu seçim haritandaki insanları ve önerileri şekillendirir. Sonradan değiştirebilirsin.',
         en: 'This shapes the people and suggestions on your map. You can change it later.',
         de: 'Das beeinflusst Menschen und Vorschläge auf deiner Karte. Später änderbar.',

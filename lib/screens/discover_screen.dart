@@ -50,18 +50,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   ModeConfig get _currentMode => ModeConfig.all[_selectedMode];
   AppLocalizations get _l10n => context.l10n;
 
-  String _copy({
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (_l10n.languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   @override
   void initState() {
     super.initState();
@@ -339,7 +327,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       ..showSnackBar(
         SnackBar(
           content: Text(
-            _copy(
+            context.tr3(
               tr: 'Yorum panoya kopyalandı.',
               en: 'Comment copied to clipboard.',
               de: 'Kommentar wurde in die Zwischenablage kopiert.',
@@ -363,7 +351,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         backgroundColor: AppColors.bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          _copy(
+          context.tr3(
             tr: 'Yorumu düzenle',
             en: 'Edit comment',
             de: 'Kommentar bearbeiten',
@@ -376,7 +364,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           minLines: 2,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
-            hintText: _copy(
+            hintText: context.tr3(
               tr: 'Yorum yaz...',
               en: 'Write a comment...',
               de: 'Kommentar schreiben...',
@@ -399,7 +387,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
             child: Text(
-              _copy(
+              context.tr3(
                 tr: 'Kaydet',
                 en: 'Save',
                 de: 'Speichern',
@@ -429,12 +417,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         SnackBar(
           content: Text(
             updated != null
-                ? _copy(
+                ? context.tr3(
                     tr: 'Yorum güncellendi.',
                     en: 'Comment updated.',
                     de: 'Kommentar aktualisiert.',
                   )
-                : _copy(
+                : context.tr3(
                     tr: 'Yorum güncellenemedi.',
                     en: 'Comment could not be updated.',
                     de: 'Kommentar konnte nicht aktualisiert werden.',
@@ -456,7 +444,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         backgroundColor: AppColors.bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          _copy(
+          context.tr3(
             tr: 'Bu yorum silinsin mi?',
             en: 'Delete this comment?',
             de: 'Diesen Kommentar löschen?',
@@ -464,7 +452,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
         ),
         content: Text(
-          _copy(
+          context.tr3(
             tr: 'Bu işlem geri alınamaz.',
             en: 'This action cannot be undone.',
             de: 'Diese Aktion kann nicht rückgängig gemacht werden.',
@@ -480,7 +468,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             child: Text(
-              _copy(
+              context.tr3(
                 tr: 'Sil',
                 en: 'Delete',
                 de: 'Löschen',
@@ -505,12 +493,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         SnackBar(
           content: Text(
             deleted
-                ? _copy(
+                ? context.tr3(
                     tr: 'Yorum silindi.',
                     en: 'Comment deleted.',
                     de: 'Kommentar gelöscht.',
                   )
-                : _copy(
+                : context.tr3(
                     tr: 'Yorum silinemedi.',
                     en: 'Comment could not be deleted.',
                     de: 'Kommentar konnte nicht gelöscht werden.',
@@ -536,7 +524,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         backgroundColor: AppColors.bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          _copy(
+          context.tr3(
             tr: 'Kullanıcıyı şikayet et',
             en: 'Report user',
             de: 'Nutzer melden',
@@ -562,7 +550,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   DropdownMenuItem(
                     value: 'Harassment',
                     child: Text(
-                      _copy(
+                      context.tr3(
                         tr: 'Rahatsız edici davranış',
                         en: 'Harassment',
                         de: 'Belästigendes Verhalten',
@@ -572,7 +560,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   DropdownMenuItem(
                     value: 'Fake profile',
                     child: Text(
-                      _copy(
+                      context.tr3(
                         tr: 'Sahte profil',
                         en: 'Fake profile',
                         de: 'Fake-Profil',
@@ -582,7 +570,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   DropdownMenuItem(
                     value: 'Inappropriate content',
                     child: Text(
-                      _copy(
+                      context.tr3(
                         tr: 'İstenmeyen içerik',
                         en: 'Inappropriate content',
                         de: 'Unangemessener Inhalt',
@@ -592,7 +580,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   DropdownMenuItem(
                     value: 'Safety concern',
                     child: Text(
-                      _copy(
+                      context.tr3(
                         tr: 'Güvenlik endişesi',
                         en: 'Safety concern',
                         de: 'Sicherheitsbedenken',
@@ -611,7 +599,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 maxLines: 4,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: _copy(
+                  hintText: context.tr3(
                     tr: 'Kısa bir not ekleyebilirsin',
                     en: 'You can add a short note',
                     de: 'Du kannst eine kurze Notiz hinzufügen',
@@ -634,7 +622,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: Text(
-              _copy(
+              context.tr3(
                 tr: 'Vazgeç',
                 en: 'Cancel',
                 de: 'Abbrechen',
@@ -645,7 +633,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.warning),
             child: Text(
-              _copy(
+              context.tr3(
                 tr: 'Gönder',
                 en: 'Send',
                 de: 'Senden',
@@ -732,7 +720,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         PopupMenuItem<String>(
           value: 'copy',
           child: Text(
-            _copy(
+            context.tr3(
               tr: 'Kopyala',
               en: 'Copy',
               de: 'Kopieren',
@@ -748,7 +736,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           PopupMenuItem<String>(
             value: 'delete',
             child: Text(
-              _copy(
+              context.tr3(
                 tr: 'Sil',
                 en: 'Delete',
                 de: 'Löschen',
@@ -1053,7 +1041,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        _copy(
+                        context.tr3(
                           tr: 'Canlı keşif',
                           en: 'Live discovery',
                           de: 'Live-Discovery',
@@ -1071,7 +1059,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             ),
             const SizedBox(height: 14),
             Text(
-              _copy(
+              context.tr3(
                 tr: 'Şehirde şu an öne çıkan akışı keşfet',
                 en: 'Explore the flow rising in the city right now',
                 de: 'Entdecke den Flow, der in der Stadt gerade steigt',
@@ -1085,7 +1073,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              _copy(
+              context.tr3(
                 tr:
                     'Shorts, gönderiler, trend yerler ve kısa vadeli tahminler seçtiğin moda göre tek akışta birleşiyor.',
                 en:
@@ -1105,7 +1093,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               runSpacing: 8,
               children: [
                 _metricChip(
-                  _copy(
+                  context.tr3(
                     tr: '${_filteredPlaces.length} aktif nokta',
                     en: '${_filteredPlaces.length} active spots',
                     de: '${_filteredPlaces.length} aktive Spots',
@@ -1113,7 +1101,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   modeColor,
                 ),
                 _metricChip(
-                  _copy(
+                  context.tr3(
                     tr: '$liveCount şu an açık',
                     en: '$liveCount open now',
                     de: '$liveCount jetzt offen',
@@ -1122,7 +1110,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 ),
                 if (topPulse > 0)
                   _metricChip(
-                    _copy(
+                    context.tr3(
                       tr: 'Tepe pulse $topPulse',
                       en: 'Top pulse $topPulse',
                       de: 'Top-Pulse $topPulse',
@@ -1173,7 +1161,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           const SizedBox(height: 3),
                           Text(
                             topPlace['vicinity']?.toString() ??
-                                _copy(
+                                context.tr3(
                                   tr: 'Çevrende yükselen yer',
                                   en: 'Rising around you',
                                   de: 'Steigt in deiner Nähe',
@@ -1216,7 +1204,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         Text(
-          _copy(
+          context.tr3(
             tr: '\u015eehir ak\u0131\u015f\u0131n\u0131 ke\u015ffet',
             en: 'Explore the city flow',
             de: 'Entdecke den Stadtfluss',
@@ -1303,7 +1291,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    _copy(
+                    context.tr3(
                       tr: 'Canl\u0131 ke\u015fif',
                       en: 'Live discovery',
                       de: 'Live-Discovery',
@@ -1319,7 +1307,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             ),
             const SizedBox(height: 14),
             Text(
-              _copy(
+              context.tr3(
                 tr: '\u015eehirde \u015fu an \u00f6ne \u00e7\u0131kan ak\u0131\u015f\u0131 ke\u015ffet',
                 en: 'Explore the flow rising in the city right now',
                 de: 'Entdecke den Flow, der in der Stadt gerade steigt',
@@ -1333,7 +1321,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              _copy(
+              context.tr3(
                 tr:
                     'Shorts, g\u00f6nderiler, trend yerler ve k\u0131sa vadeli tahminler se\u00e7ti\u011fin moda g\u00f6re tek ak\u0131\u015fta birle\u015fiyor.',
                 en:
@@ -1353,7 +1341,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               runSpacing: 8,
               children: [
                 _metricChip(
-                  _copy(
+                  context.tr3(
                     tr: '${_filteredPlaces.length} aktif nokta',
                     en: '${_filteredPlaces.length} active spots',
                     de: '${_filteredPlaces.length} aktive Spots',
@@ -1361,7 +1349,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   modeColor,
                 ),
                 _metricChip(
-                  _copy(
+                  context.tr3(
                     tr: '$liveCount \u015fu an a\u00e7\u0131k',
                     en: '$liveCount open now',
                     de: '$liveCount jetzt offen',
@@ -1370,7 +1358,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 ),
                 if (topPulse > 0)
                   _metricChip(
-                    _copy(
+                    context.tr3(
                       tr: 'Tepe pulse $topPulse',
                       en: 'Top pulse $topPulse',
                       de: 'Top-Pulse $topPulse',
@@ -1421,7 +1409,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           const SizedBox(height: 3),
                           Text(
                             topPlace['vicinity']?.toString() ??
-                                _copy(
+                                context.tr3(
                                   tr: '\u00c7evrende y\u00fckselen yer',
                                   en: 'Rising around you',
                                   de: 'Steigt in deiner N\u00e4he',

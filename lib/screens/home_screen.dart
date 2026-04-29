@@ -2325,7 +2325,7 @@ class _HomeScreenState extends State<HomeScreen>
   /// uygun renkte parlar.
   Widget _buildCreateActivityRailButton() {
     final modeColor = _currentMode.color;
-    final label = _copy(
+    final label = context.tr3(
       tr: 'Etkinlik oluştur',
       en: 'Create activity',
       de: 'Aktivität erstellen',
@@ -2374,7 +2374,7 @@ class _HomeScreenState extends State<HomeScreen>
   /// Profil rail'lerinde foto/story/shorts için inline + var; feed post
   /// için global giriş noktası bu rail butonu.
   Widget _buildComposeRailButton() {
-    final label = _copy(
+    final label = context.tr3(
       tr: 'Gönderi oluştur',
       en: 'Create post',
       de: 'Beitrag erstellen',
@@ -2517,13 +2517,13 @@ class _HomeScreenState extends State<HomeScreen>
           seg(
             HomeLens.people,
             Icons.person_pin_circle_rounded,
-            _copy(tr: 'İnsanlar', en: 'People', de: 'Leute'),
+            context.tr3(tr: 'İnsanlar', en: 'People', de: 'Leute'),
           ),
           const SizedBox(width: 4),
           seg(
             HomeLens.activities,
             Icons.event_rounded,
-            _copy(tr: 'Etkinlik', en: 'Events', de: 'Events'),
+            context.tr3(tr: 'Etkinlik', en: 'Events', de: 'Events'),
           ),
         ],
       ),
@@ -2729,10 +2729,10 @@ class _HomeScreenState extends State<HomeScreen>
     final now = DateTime.now();
     final diff = startsAt.difference(now);
     if (diff.isNegative) {
-      return _copy(tr: 'Şimdi', en: 'Now', de: 'Jetzt');
+      return context.tr3(tr: 'Şimdi', en: 'Now', de: 'Jetzt');
     }
     if (diff.inMinutes < 60) {
-      return _copy(
+      return context.tr3(
         tr: '${diff.inMinutes} dk sonra',
         en: 'in ${diff.inMinutes} min',
         de: 'in ${diff.inMinutes} Min',
@@ -2744,14 +2744,14 @@ class _HomeScreenState extends State<HomeScreen>
     final hh = startsAt.hour.toString().padLeft(2, '0');
     final mm = startsAt.minute.toString().padLeft(2, '0');
     if (sameDay) {
-      return _copy(tr: 'Bugün $hh:$mm', en: 'Today $hh:$mm', de: 'Heute $hh:$mm');
+      return context.tr3(tr: 'Bugün $hh:$mm', en: 'Today $hh:$mm', de: 'Heute $hh:$mm');
     }
     final tomorrow = now.add(const Duration(days: 1));
     final isTomorrow = startsAt.year == tomorrow.year &&
         startsAt.month == tomorrow.month &&
         startsAt.day == tomorrow.day;
     if (isTomorrow) {
-      return _copy(
+      return context.tr3(
         tr: 'Yarın $hh:$mm',
         en: 'Tomorrow $hh:$mm',
         de: 'Morgen $hh:$mm',
@@ -2782,7 +2782,7 @@ class _HomeScreenState extends State<HomeScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _copy(
+                  context.tr3(
                     tr: 'Yakında etkinlik yok',
                     en: 'No nearby activities',
                     de: 'Keine Aktivitäten in der Nähe',
@@ -2795,7 +2795,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _copy(
+                  context.tr3(
                     tr: 'İlk hareketi sen başlat — bir etkinlik aç.',
                     en: 'Be the first — host an activity.',
                     de: 'Mach den Anfang — erstelle eine Aktivität.',
@@ -2828,7 +2828,7 @@ class _HomeScreenState extends State<HomeScreen>
                   Icon(Icons.add_rounded, size: 14, color: modeColor),
                   const SizedBox(width: 4),
                   Text(
-                    _copy(tr: 'Aç', en: 'Host', de: 'Erstellen'),
+                    context.tr3(tr: 'Aç', en: 'Host', de: 'Erstellen'),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -2925,14 +2925,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  String _copy({required String tr, required String en, required String de}) {
-    return switch (context.l10n.languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   Widget _buildTopBar(double topInset) {
     final modeColor = _currentMode.color;
     return Positioned(
@@ -2964,7 +2956,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
               Text(
-                _copy(
+                context.tr3(
                   tr: 'Canlı şehir akışı',
                   en: 'Live city flow',
                   de: 'Live-Stadtfluss',
@@ -3084,7 +3076,7 @@ class _HomeScreenState extends State<HomeScreen>
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    _copy(tr: 'Şu an', en: 'Right now', de: 'Jetzt'),
+                    context.tr3(tr: 'Şu an', en: 'Right now', de: 'Jetzt'),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -3101,7 +3093,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const SizedBox(height: 12),
             Text(
-              _copy(
+              context.tr3(
                 tr: 'Bugün sana en iyi uyan yerler',
                 en: 'Best matching places for you now',
                 de: 'Die besten Orte für dich im Moment',
@@ -3118,7 +3110,7 @@ class _HomeScreenState extends State<HomeScreen>
             if (!_heroCollapsed) ...[
               const SizedBox(height: 8),
               Text(
-                _copy(
+                context.tr3(
                   tr: 'Moduna, yakınlığına, açıklık durumuna ve anlık pulse yoğunluğuna göre sıralanıyor.',
                   en: 'Ranked by your mode, distance, open status, and live pulse intensity.',
                   de: 'Sortiert nach Modus, Entfernung, Öffnungsstatus und Live-Pulse.',
@@ -3135,7 +3127,7 @@ class _HomeScreenState extends State<HomeScreen>
                 runSpacing: 8,
                 children: [
                   _buildTag(
-                    _copy(
+                    context.tr3(
                       tr: '$suggestionCount öneri',
                       en: '$suggestionCount picks',
                       de: '$suggestionCount Vorschläge',
@@ -3143,7 +3135,7 @@ class _HomeScreenState extends State<HomeScreen>
                     modeColor,
                   ),
                   _buildTag(
-                    _copy(
+                    context.tr3(
                       tr: '$openCount açık nokta',
                       en: '$openCount open now',
                       de: '$openCount offen',
@@ -3151,7 +3143,7 @@ class _HomeScreenState extends State<HomeScreen>
                     AppColors.success,
                   ),
                   _buildTag(
-                    _copy(
+                    context.tr3(
                       tr: 'Anlık sıralama',
                       en: 'Live ranking',
                       de: 'Live-Ranking',
@@ -3192,7 +3184,7 @@ class _HomeScreenState extends State<HomeScreen>
                   _flyToCoordinates(pos.longitude, pos.latitude, zoom: 15);
                 }
               },
-              tooltip: _copy(
+              tooltip: context.tr3(
                 tr: 'Konumum',
                 en: 'My location',
                 de: 'Mein Standort',
@@ -3205,7 +3197,7 @@ class _HomeScreenState extends State<HomeScreen>
                 context,
                 SlideUpRoute(page: const DiscoverPeopleScreen()),
               ),
-              tooltip: _copy(
+              tooltip: context.tr3(
                 tr: 'Yakındakiler',
                 en: 'Nearby',
                 de: 'In der Nähe',
@@ -3218,7 +3210,7 @@ class _HomeScreenState extends State<HomeScreen>
                 context,
                 SlideUpRoute(page: const MatchesScreen()),
               ),
-              tooltip: _copy(
+              tooltip: context.tr3(
                 tr: 'Eşleşmeler',
                 en: 'Matches',
                 de: 'Matches',
@@ -3236,7 +3228,7 @@ class _HomeScreenState extends State<HomeScreen>
                     page: const ShortsScreen(scope: ShortsFeedScope.global),
                   ),
                 ),
-                tooltip: _copy(
+                tooltip: context.tr3(
                   tr: 'Kısa videolar',
                   en: 'Shorts',
                   de: 'Kurzvideos',
@@ -3357,7 +3349,7 @@ class _HomeScreenState extends State<HomeScreen>
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: Text(
-                          _copy(
+                          context.tr3(
                             tr: 'Seçtiğin moda göre en yüksek pulse taşıyan ve şu ana en uygun görünen yerler.',
                             en: 'Places with the highest pulse and strongest fit for your selected mode right now.',
                             de: 'Orte mit dem stärksten Pulse und der besten Passung zu deinem aktuellen Modus.',
@@ -3378,7 +3370,7 @@ class _HomeScreenState extends State<HomeScreen>
                           children: [
                             _buildPlaceLensChip(l10n.phrase('Genel'), 0),
                             _buildPlaceLensChip(
-                              _copy(
+                              context.tr3(
                                 tr: 'En Yakın',
                                 en: 'Nearest',
                                 de: 'Nächste',
@@ -3386,7 +3378,7 @@ class _HomeScreenState extends State<HomeScreen>
                               1,
                             ),
                             _buildPlaceLensChip(
-                              _copy(
+                              context.tr3(
                                 tr: 'En Popüler',
                                 en: 'Popular',
                                 de: 'Beliebt',
@@ -3394,7 +3386,7 @@ class _HomeScreenState extends State<HomeScreen>
                               2,
                             ),
                             _buildPlaceLensChip(
-                              _copy(tr: 'Açık', en: 'Open', de: 'Offen'),
+                              context.tr3(tr: 'Açık', en: 'Open', de: 'Offen'),
                               3,
                             ),
                           ],
@@ -3478,7 +3470,7 @@ class _HomeScreenState extends State<HomeScreen>
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: Text(
-                          _copy(
+                          context.tr3(
                             tr: 'Yakındaki etkinlikler — bir gruba katıl ya da kendi etkinliğini aç.',
                             en: 'Nearby activities — join one or host your own.',
                             de: 'Aktivitäten in der Nähe — mitmachen oder selbst hosten.',

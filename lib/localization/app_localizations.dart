@@ -1354,4 +1354,21 @@ class _AppLocalizationsDelegate
 
 extension AppLocalizationsX on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
+
+  /// Inline 3-dilli quick-copy helper. ARB tablolarına anahtar eklemeye
+  /// gerek olmayan, ekrana özel kısa stringler için kullan (tooltip,
+  /// placeholder, küçük UI label'ları). Daha geniş paylaşılan stringler
+  /// hâlâ `l10n.t(...)` veya `l10n.phrase(...)` üzerinden gitmeli.
+  ///
+  /// Örnek:
+  /// ```
+  /// Text(context.tr3(tr: 'Yakındakiler', en: 'Nearby', de: 'In der Nähe'))
+  /// ```
+  String tr3({required String tr, required String en, required String de}) {
+    return switch (l10n.languageCode) {
+      'en' => en,
+      'de' => de,
+      _ => tr,
+    };
+  }
 }

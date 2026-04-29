@@ -183,14 +183,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  String _copy({required String tr, required String en, required String de}) {
-    return switch (_l10n.languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   String get _normalizedUserName {
     final raw = _userNameController.text.trim().toLowerCase();
     return raw.startsWith('@') ? raw.substring(1) : raw;
@@ -211,14 +203,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   String? _validateDraft() {
     if (_normalizedUserName.length < 3) {
-      return _copy(
+      return context.tr3(
         tr: 'Kullanıcı adı en az 3 karakter olmalı.',
         en: 'Username must be at least 3 characters.',
         de: 'Der Benutzername muss mindestens 3 Zeichen lang sein.',
       );
     }
     if (!RegExp(r'^[a-z0-9._]+$').hasMatch(_normalizedUserName)) {
-      return _copy(
+      return context.tr3(
         tr: 'Kullanıcı adı sadece küçük harf, rakam, nokta ve alt çizgi içerebilir.',
         en: 'Username can only contain lowercase letters, numbers, dots, and underscores.',
         de: 'Der Benutzername darf nur Kleinbuchstaben, Zahlen, Punkte und Unterstriche enthalten.',
@@ -228,21 +220,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _firstNameController.text.trim().isEmpty ||
         _lastNameController.text.trim().isEmpty ||
         _cityController.text.trim().isEmpty) {
-      return _copy(
+      return context.tr3(
         tr: 'Görünen ad, ad, soyad ve şehir zorunlu.',
         en: 'Display name, first name, last name, and city are required.',
         de: 'Anzeigename, Vorname, Nachname und Stadt sind erforderlich.',
       );
     }
     if (_birthDate == null) {
-      return _copy(
+      return context.tr3(
         tr: 'Doğum tarihi seçmelisin.',
         en: 'You need to select a birth date.',
         de: 'Du musst ein Geburtsdatum auswählen.',
       );
     }
     if (_interests.isEmpty) {
-      return _copy(
+      return context.tr3(
         tr: 'En az bir ilgi alanı seç.',
         en: 'Select at least one interest.',
         de: 'Wähle mindestens ein Interesse aus.',
@@ -317,7 +309,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          _copy(
+          context.tr3(
             tr: 'Profili Düzenle',
             en: 'Edit Profile',
             de: 'Profil bearbeiten',
@@ -331,7 +323,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           TextButton(
             onPressed: _submit,
             child: Text(
-              _copy(tr: 'Kaydet', en: 'Save', de: 'Speichern'),
+              context.tr3(tr: 'Kaydet', en: 'Save', de: 'Speichern'),
               style: const TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w800,
@@ -351,8 +343,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   _hero(),
                   const SizedBox(height: 16),
                   _section(
-                    title: _copy(tr: 'Kimlik', en: 'Identity', de: 'Identität'),
-                    subtitle: _copy(
+                    title: context.tr3(tr: 'Kimlik', en: 'Identity', de: 'Identität'),
+                    subtitle: context.tr3(
                       tr: 'Kullanıcı adı, görünen ad ve temel profil alanlarını güncelle.',
                       en: 'Update your username, display name, and primary profile fields.',
                       de: 'Aktualisiere Benutzernamen, Anzeigenamen und zentrale Profilfelder.',
@@ -361,7 +353,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       children: [
                         _field(
                           _userNameController,
-                          _copy(
+                          context.tr3(
                             tr: 'Kullanıcı adı',
                             en: 'Username',
                             de: 'Benutzername',
@@ -378,12 +370,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         const SizedBox(height: 12),
                         _field(
                           _displayNameController,
-                          _copy(
+                          context.tr3(
                             tr: 'Görünen ad',
                             en: 'Display name',
                             de: 'Anzeigename',
                           ),
-                          _copy(
+                          context.tr3(
                             tr: 'Profilde görünen isim',
                             en: 'Name shown on profile',
                             de: 'Im Profil sichtbarer Name',
@@ -396,12 +388,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             Expanded(
                               child: _field(
                                 _firstNameController,
-                                _copy(
+                                context.tr3(
                                   tr: 'Ad',
                                   en: 'First name',
                                   de: 'Vorname',
                                 ),
-                                _copy(
+                                context.tr3(
                                   tr: 'Adın',
                                   en: 'Your first name',
                                   de: 'Dein Vorname',
@@ -413,12 +405,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             Expanded(
                               child: _field(
                                 _lastNameController,
-                                _copy(
+                                context.tr3(
                                   tr: 'Soyad',
                                   en: 'Last name',
                                   de: 'Nachname',
                                 ),
-                                _copy(
+                                context.tr3(
                                   tr: 'Soyadın',
                                   en: 'Your last name',
                                   de: 'Dein Nachname',
@@ -431,8 +423,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         const SizedBox(height: 12),
                         _field(
                           _cityController,
-                          _copy(tr: 'Şehir', en: 'City', de: 'Stadt'),
-                          _copy(
+                          context.tr3(tr: 'Şehir', en: 'City', de: 'Stadt'),
+                          context.tr3(
                             tr: 'Yaşadığın şehir',
                             en: 'Your city',
                             de: 'Deine Stadt',
@@ -450,7 +442,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         _field(
                           _bioController,
                           'Bio',
-                          _copy(
+                          context.tr3(
                             tr: 'Kendinden kısaca bahset',
                             en: 'Tell people about yourself',
                             de: 'Erzähle kurz etwas über dich',
@@ -464,12 +456,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   const SizedBox(height: 16),
                   _section(
-                    title: _copy(
+                    title: context.tr3(
                       tr: 'Kişisel Ayarlar',
                       en: 'Personal Settings',
                       de: 'Persönliche Einstellungen',
                     ),
-                    subtitle: _copy(
+                    subtitle: context.tr3(
                       tr: 'Kayıt sırasında alınan kişisel bilgileri burada güncelleyebilirsin.',
                       en: 'Update the personal information collected during signup here.',
                       de: 'Hier kannst du die bei der Registrierung erfassten Angaben aktualisieren.',
@@ -480,7 +472,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         _birthDateTile(),
                         const SizedBox(height: 12),
                         _label(
-                          _copy(tr: 'Cinsiyet', en: 'Gender', de: 'Geschlecht'),
+                          context.tr3(tr: 'Cinsiyet', en: 'Gender', de: 'Geschlecht'),
                         ),
                         const SizedBox(height: 8),
                         _chipGroup<String>(
@@ -495,7 +487,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                         const SizedBox(height: 12),
                         _label(
-                          _copy(
+                          context.tr3(
                             tr: 'Eşleşme tercihi',
                             en: 'Match preference',
                             de: 'Matching-Präferenz',
@@ -518,12 +510,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   const SizedBox(height: 16),
                   _section(
-                    title: _copy(
+                    title: context.tr3(
                       tr: 'Mod ve Gizlilik',
                       en: 'Mode & Privacy',
                       de: 'Modus & Privatsphäre',
                     ),
-                    subtitle: _copy(
+                    subtitle: context.tr3(
                       tr: 'Onboarding seçimleri, dil ve görünürlük ayarları burada yönetilir.',
                       en: 'Manage onboarding choices, language, and visibility here.',
                       de: 'Verwalte hier Onboarding-Auswahl, Sprache und Sichtbarkeit.',
@@ -532,7 +524,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _label(
-                          _copy(
+                          context.tr3(
                             tr: 'Ana mod',
                             en: 'Primary mode',
                             de: 'Hauptmodus',
@@ -542,7 +534,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         _modeGroup(_mode, (v) => setState(() => _mode = v)),
                         const SizedBox(height: 12),
                         _label(
-                          _copy(
+                          context.tr3(
                             tr: 'Profil amacı',
                             en: 'Profile intent',
                             de: 'Profilabsicht',
@@ -555,7 +547,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                         const SizedBox(height: 12),
                         _label(
-                          _copy(
+                          context.tr3(
                             tr: 'Gizlilik düzeyi',
                             en: 'Privacy level',
                             de: 'Privatsphäre-Stufe',
@@ -566,13 +558,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           const ['full', 'partial', 'ghost'],
                           _privacyLevel,
                           (v) => switch (v) {
-                            'partial' => _copy(
+                            'partial' => context.tr3(
                               tr: 'Kısmi Katılım',
                               en: 'Partial',
                               de: 'Teilweise',
                             ),
                             'ghost' => 'Ghost',
-                            _ => _copy(
+                            _ => context.tr3(
                               tr: 'Tam Katılım',
                               en: 'Full',
                               de: 'Voll',
@@ -581,7 +573,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           (v) => setState(() => _privacyLevel = v),
                         ),
                         const SizedBox(height: 12),
-                        _label(_copy(tr: 'Dil', en: 'Language', de: 'Sprache')),
+                        _label(context.tr3(tr: 'Dil', en: 'Language', de: 'Sprache')),
                         const SizedBox(height: 8),
                         _chipGroup<String>(
                           const ['tr', 'en', 'de'],
@@ -595,7 +587,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                         const SizedBox(height: 12),
                         _label(
-                          _copy(
+                          context.tr3(
                             tr: 'Konum hassasiyeti',
                             en: 'Location granularity',
                             de: 'Standortgenauigkeit',
@@ -606,22 +598,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           const ['nearby', 'district', 'city', 'exact'],
                           _locationGranularity,
                           (v) => switch (v) {
-                            'district' => _copy(
+                            'district' => context.tr3(
                               tr: 'İlçe',
                               en: 'District',
                               de: 'Bezirk',
                             ),
-                            'city' => _copy(
+                            'city' => context.tr3(
                               tr: 'Şehir',
                               en: 'City',
                               de: 'Stadt',
                             ),
-                            'exact' => _copy(
+                            'exact' => context.tr3(
                               tr: 'Tam Konum',
                               en: 'Exact',
                               de: 'Genau',
                             ),
-                            _ => _copy(
+                            _ => context.tr3(
                               tr: 'Yakın Çevre',
                               en: 'Nearby',
                               de: 'Nahbereich',
@@ -631,7 +623,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                         const SizedBox(height: 12),
                         _label(
-                          _copy(
+                          context.tr3(
                             tr: 'K anonimlik seviyesi',
                             en: 'K-anonymity level',
                             de: 'K-Anonymitätsstufe',
@@ -646,12 +638,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                         const SizedBox(height: 12),
                         _switchTile(
-                          _copy(
+                          context.tr3(
                             tr: 'Profil görünür olsun',
                             en: 'Profile visible',
                             de: 'Profil sichtbar',
                           ),
-                          _copy(
+                          context.tr3(
                             tr: 'Diğer kullanıcılar profilini görebilsin.',
                             en: 'Allow other users to discover your profile.',
                             de: 'Andere Nutzer dürfen dein Profil entdecken.',
@@ -660,12 +652,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           (v) => setState(() => _isVisible = v),
                         ),
                         _switchTile(
-                          _copy(
+                          context.tr3(
                             tr: 'Diferansiyel gizlilik',
                             en: 'Differential privacy',
                             de: 'Differential Privacy',
                           ),
-                          _copy(
+                          context.tr3(
                             tr: 'Anonim sinyal hesaplarında ek gizlilik katmanı uygula.',
                             en: 'Apply an additional privacy layer to anonymous signal calculations.',
                             de: 'Aktiviere eine zusätzliche Datenschutzschicht für anonyme Signalberechnungen.',
@@ -674,12 +666,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           (v) => setState(() => _enableDifferentialPrivacy = v),
                         ),
                         _switchTile(
-                          _copy(
+                          context.tr3(
                             tr: 'Ürün analizine izin ver',
                             en: 'Allow analytics',
                             de: 'Analysen erlauben',
                           ),
-                          _copy(
+                          context.tr3(
                             tr: 'Anonim kullanım verisiyle ürünü geliştirmemize yardımcı ol.',
                             en: 'Help improve the product with anonymous usage data.',
                             de: 'Hilf uns mit anonymen Nutzungsdaten, das Produkt zu verbessern.',
@@ -696,12 +688,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   _buildPromptsSection(),
                   const SizedBox(height: 16),
                   _section(
-                    title: _copy(
+                    title: context.tr3(
                       tr: 'İlgi Alanları',
                       en: 'Interests',
                       de: 'Interessen',
                     ),
-                    subtitle: _copy(
+                    subtitle: context.tr3(
                       tr: 'Keşif ve öneri mantığı bu alanları referans alır.',
                       en: 'Discovery and recommendation logic uses these interests.',
                       de: 'Discovery- und Empfehlungslogik nutzt diese Interessen.',
@@ -741,7 +733,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                   ),
                   child: Text(
-                    _copy(
+                    context.tr3(
                       tr: 'Değişiklikleri kaydet',
                       en: 'Save changes',
                       de: 'Änderungen speichern',
@@ -831,7 +823,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   _pill(
                     _cityController.text.trim().isEmpty
-                        ? _copy(
+                        ? context.tr3(
                             tr: 'Şehir yok',
                             en: 'No city',
                             de: 'Keine Stadt',
@@ -931,7 +923,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final hasDate = _birthDate != null;
     final label = hasDate
         ? '${_birthDate!.day.toString().padLeft(2, '0')}.${_birthDate!.month.toString().padLeft(2, '0')}.${_birthDate!.year}'
-        : _copy(
+        : context.tr3(
             tr: 'Doğum tarihi seç',
             en: 'Select birth date',
             de: 'Geburtsdatum wählen',
@@ -967,7 +959,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _copy(
+                      context.tr3(
                         tr: 'Doğum Tarihi',
                         en: 'Birth Date',
                         de: 'Geburtsdatum',
@@ -994,7 +986,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     if (hasDate) ...[
                       const SizedBox(height: 2),
                       Text(
-                        _copy(
+                        context.tr3(
                           tr: 'Yaş: ${_calculateAge(_birthDate!)}',
                           en: 'Age: ${_calculateAge(_birthDate!)}',
                           de: 'Alter: ${_calculateAge(_birthDate!)}',
@@ -1226,42 +1218,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   String _promptLabel(String id) {
     return switch (id) {
-      'about_me' => _copy(
+      'about_me' => context.tr3(
           tr: 'Hakkımda',
           en: 'About me',
           de: 'Über mich',
         ),
-      'perfect_weekend' => _copy(
+      'perfect_weekend' => context.tr3(
           tr: 'Mükemmel hafta sonum',
           en: 'My perfect weekend',
           de: 'Mein perfektes Wochenende',
         ),
-      'deal_maker' => _copy(
+      'deal_maker' => context.tr3(
           tr: 'Benim için olmazsa olmaz',
           en: 'My must-have',
           de: 'Mein Must-have',
         ),
-      'dream_trip' => _copy(
+      'dream_trip' => context.tr3(
           tr: 'Hayalimdeki seyahat',
           en: 'Dream trip',
           de: 'Meine Traumreise',
         ),
-      'always_laughing_at' => _copy(
+      'always_laughing_at' => context.tr3(
           tr: 'Beni hep güldüren şey',
           en: 'Always laughing at',
           de: 'Worüber ich immer lache',
         ),
-      'looking_for' => _copy(
+      'looking_for' => context.tr3(
           tr: 'Aradığım şey',
           en: 'What I am looking for',
           de: 'Was ich suche',
         ),
-      'green_flags' => _copy(
+      'green_flags' => context.tr3(
           tr: 'Yeşil bayraklarım',
           en: 'My green flags',
           de: 'Meine Green Flags',
         ),
-      'go_to_song' => _copy(
+      'go_to_song' => context.tr3(
           tr: 'Vazgeçilmez şarkım',
           en: 'My go-to song',
           de: 'Mein Lieblingslied',
@@ -1272,42 +1264,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   String _promptHint(String id) {
     return switch (id) {
-      'about_me' => _copy(
+      'about_me' => context.tr3(
           tr: 'Birkaç cümleyle sen',
           en: 'A few lines about you',
           de: 'Ein paar Zeilen über dich',
         ),
-      'perfect_weekend' => _copy(
+      'perfect_weekend' => context.tr3(
           tr: 'Brunch, kısa bir yol, film maratonu…',
           en: 'Brunch, a short trip, movie marathon…',
           de: 'Brunch, Kurztrip, Filmemarathon…',
         ),
-      'deal_maker' => _copy(
+      'deal_maker' => context.tr3(
           tr: 'Benim için çok değerli olan şey',
           en: 'Something that matters to me',
           de: 'Was mir wichtig ist',
         ),
-      'dream_trip' => _copy(
+      'dream_trip' => context.tr3(
           tr: 'Gidilecek yer ve neden',
           en: 'Where and why',
           de: 'Wohin und warum',
         ),
-      'always_laughing_at' => _copy(
+      'always_laughing_at' => context.tr3(
           tr: 'Mem, diziden sahne, bir iç şaka…',
           en: 'A meme, a scene, an inside joke…',
           de: 'Ein Meme, eine Szene, ein Insider…',
         ),
-      'looking_for' => _copy(
+      'looking_for' => context.tr3(
           tr: 'Kısaca bekle veya umut et',
           en: 'Briefly what you hope for',
           de: 'Kurz, was du dir wünschst',
         ),
-      'green_flags' => _copy(
+      'green_flags' => context.tr3(
           tr: 'Seni heyecanlandıran özellikler',
           en: 'Traits that excite you',
           de: 'Eigenschaften, die dich begeistern',
         ),
-      'go_to_song' => _copy(
+      'go_to_song' => context.tr3(
           tr: 'Şarkıcı – parça',
           en: 'Artist – track',
           de: 'Künstler – Titel',
@@ -1332,44 +1324,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   String _datingLabel(String key) {
     return switch (key) {
-      'straight' => _copy(tr: 'Heteroseksüel', en: 'Straight', de: 'Hetero'),
-      'gay' => _copy(tr: 'Gey', en: 'Gay', de: 'Schwul'),
-      'lesbian' => _copy(tr: 'Lezbiyen', en: 'Lesbian', de: 'Lesbisch'),
-      'bi' => _copy(tr: 'Biseksüel', en: 'Bisexual', de: 'Bisexuell'),
-      'pan' => _copy(tr: 'Panseksüel', en: 'Pansexual', de: 'Pansexuell'),
+      'straight' => context.tr3(tr: 'Heteroseksüel', en: 'Straight', de: 'Hetero'),
+      'gay' => context.tr3(tr: 'Gey', en: 'Gay', de: 'Schwul'),
+      'lesbian' => context.tr3(tr: 'Lezbiyen', en: 'Lesbian', de: 'Lesbisch'),
+      'bi' => context.tr3(tr: 'Biseksüel', en: 'Bisexual', de: 'Bisexuell'),
+      'pan' => context.tr3(tr: 'Panseksüel', en: 'Pansexual', de: 'Pansexuell'),
       'queer' => 'Queer',
-      'asexual' => _copy(tr: 'Aseksüel', en: 'Asexual', de: 'Asexuell'),
-      'none' => _copy(tr: 'Belirtmedim', en: 'Unspecified', de: 'Keine Angabe'),
-      'casual' => _copy(tr: 'Rahat', en: 'Casual', de: 'Locker'),
-      'relationship' => _copy(tr: 'İlişki', en: 'Relationship', de: 'Beziehung'),
-      'friendship' => _copy(tr: 'Arkadaşlık', en: 'Friendship', de: 'Freundschaft'),
-      'open' => _copy(tr: 'Açık', en: 'Open', de: 'Offen'),
-      'unsure' => _copy(tr: 'Henüz emin değilim', en: 'Still figuring out', de: 'Unsicher'),
-      'never' => _copy(tr: 'Hiç', en: 'Never', de: 'Nie'),
-      'rarely' => _copy(tr: 'Nadiren', en: 'Rarely', de: 'Selten'),
-      'socially' => _copy(tr: 'Sosyal', en: 'Socially', de: 'Gesellig'),
-      'regularly' => _copy(tr: 'Düzenli', en: 'Regularly', de: 'Regelmäßig'),
-      'flirt' => _copy(tr: 'Flört', en: 'Flirt', de: 'Flirt'),
-      'friends' => _copy(tr: 'Arkadaş', en: 'Friends', de: 'Freunde'),
-      'fun' => _copy(tr: 'Eğlence', en: 'Fun', de: 'Spaß'),
-      'chill' => _copy(tr: 'Keşif', en: 'Chill', de: 'Chill'),
-      'smoker' => _copy(tr: 'Sigara içen', en: 'Smoker', de: 'Raucher'),
-      'drinks_heavily' => _copy(tr: 'Çok içen', en: 'Heavy drinker', de: 'Viel Alkohol'),
-      'no_photo' => _copy(tr: 'Fotoğrafsız', en: 'No photo', de: 'Ohne Foto'),
-      'unverified' => _copy(tr: 'Doğrulanmamış', en: 'Unverified', de: 'Unverifiziert'),
-      'no_bio' => _copy(tr: 'Bio yok', en: 'No bio', de: 'Keine Bio'),
+      'asexual' => context.tr3(tr: 'Aseksüel', en: 'Asexual', de: 'Asexuell'),
+      'none' => context.tr3(tr: 'Belirtmedim', en: 'Unspecified', de: 'Keine Angabe'),
+      'casual' => context.tr3(tr: 'Rahat', en: 'Casual', de: 'Locker'),
+      'relationship' => context.tr3(tr: 'İlişki', en: 'Relationship', de: 'Beziehung'),
+      'friendship' => context.tr3(tr: 'Arkadaşlık', en: 'Friendship', de: 'Freundschaft'),
+      'open' => context.tr3(tr: 'Açık', en: 'Open', de: 'Offen'),
+      'unsure' => context.tr3(tr: 'Henüz emin değilim', en: 'Still figuring out', de: 'Unsicher'),
+      'never' => context.tr3(tr: 'Hiç', en: 'Never', de: 'Nie'),
+      'rarely' => context.tr3(tr: 'Nadiren', en: 'Rarely', de: 'Selten'),
+      'socially' => context.tr3(tr: 'Sosyal', en: 'Socially', de: 'Gesellig'),
+      'regularly' => context.tr3(tr: 'Düzenli', en: 'Regularly', de: 'Regelmäßig'),
+      'flirt' => context.tr3(tr: 'Flört', en: 'Flirt', de: 'Flirt'),
+      'friends' => context.tr3(tr: 'Arkadaş', en: 'Friends', de: 'Freunde'),
+      'fun' => context.tr3(tr: 'Eğlence', en: 'Fun', de: 'Spaß'),
+      'chill' => context.tr3(tr: 'Keşif', en: 'Chill', de: 'Chill'),
+      'smoker' => context.tr3(tr: 'Sigara içen', en: 'Smoker', de: 'Raucher'),
+      'drinks_heavily' => context.tr3(tr: 'Çok içen', en: 'Heavy drinker', de: 'Viel Alkohol'),
+      'no_photo' => context.tr3(tr: 'Fotoğrafsız', en: 'No photo', de: 'Ohne Foto'),
+      'unverified' => context.tr3(tr: 'Doğrulanmamış', en: 'Unverified', de: 'Unverifiziert'),
+      'no_bio' => context.tr3(tr: 'Bio yok', en: 'No bio', de: 'Keine Bio'),
       _ => key,
     };
   }
 
   Widget _buildDatingSection() {
     return _section(
-      title: _copy(
+      title: context.tr3(
         tr: 'Dating Profili',
         en: 'Dating Profile',
         de: 'Dating-Profil',
       ),
-      subtitle: _copy(
+      subtitle: context.tr3(
         tr: 'Eşleşme algoritması bu alanları senin için anlamlı kişileri bulmakta kullanır.',
         en: 'The matching algorithm uses these to surface meaningful people for you.',
         de: 'Das Matching nutzt diese Angaben, um passende Menschen zu finden.',
@@ -1377,7 +1369,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _label(_copy(tr: 'Yönelim', en: 'Orientation', de: 'Orientierung')),
+          _label(context.tr3(tr: 'Yönelim', en: 'Orientation', de: 'Orientierung')),
           const SizedBox(height: 8),
           _chipGroup<String>(
             _orientationIds,
@@ -1386,7 +1378,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             (v) => setState(() => _orientation = v == 'none' ? '' : v),
           ),
           const SizedBox(height: 14),
-          _label(_copy(tr: 'Niyet', en: 'Intent', de: 'Absicht')),
+          _label(context.tr3(tr: 'Niyet', en: 'Intent', de: 'Absicht')),
           const SizedBox(height: 8),
           _chipGroup<String>(
             _intentIds,
@@ -1395,11 +1387,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             (v) => setState(() => _relationshipIntent = v),
           ),
           const SizedBox(height: 14),
-          _label(_copy(tr: 'Boy (cm)', en: 'Height (cm)', de: 'Größe (cm)')),
+          _label(context.tr3(tr: 'Boy (cm)', en: 'Height (cm)', de: 'Größe (cm)')),
           const SizedBox(height: 8),
           _heightField(),
           const SizedBox(height: 14),
-          _label(_copy(tr: 'Alkol', en: 'Drinking', de: 'Alkohol')),
+          _label(context.tr3(tr: 'Alkol', en: 'Drinking', de: 'Alkohol')),
           const SizedBox(height: 8),
           _chipGroup<String>(
             _frequencyIds,
@@ -1408,7 +1400,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             (v) => setState(() => _drinkingStatus = v),
           ),
           const SizedBox(height: 14),
-          _label(_copy(tr: 'Sigara', en: 'Smoking', de: 'Rauchen')),
+          _label(context.tr3(tr: 'Sigara', en: 'Smoking', de: 'Rauchen')),
           const SizedBox(height: 8),
           _chipGroup<String>(
             _frequencyIds,
@@ -1417,7 +1409,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             (v) => setState(() => _smokingStatus = v),
           ),
           const SizedBox(height: 14),
-          _label(_copy(
+          _label(context.tr3(
             tr: 'Hangi modlar görsün?',
             en: 'Which modes show up?',
             de: 'Welche Modi anzeigen?',
@@ -1440,7 +1432,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             }).toList(),
           ),
           const SizedBox(height: 14),
-          _label(_copy(
+          _label(context.tr3(
             tr: 'Dealbreaker (öneri dışı bırak)',
             en: 'Dealbreakers (filter out)',
             de: 'Dealbreaker (ausfiltern)',
@@ -1469,12 +1461,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Widget _buildPromptsSection() {
     return _section(
-      title: _copy(
+      title: context.tr3(
         tr: 'Profil Soruları',
         en: 'Profile Prompts',
         de: 'Profil-Prompts',
       ),
-      subtitle: _copy(
+      subtitle: context.tr3(
         tr: 'Birkaç kısa cevap profilini daha canlı gösterir. Boş bıraktıkların görünmez.',
         en: 'A few short answers make your profile feel alive. Empty ones stay hidden.',
         de: 'Ein paar kurze Antworten machen dein Profil lebendiger. Leere bleiben unsichtbar.',

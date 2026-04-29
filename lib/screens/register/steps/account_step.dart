@@ -87,24 +87,11 @@ class _AccountStepState extends State<AccountStep> {
 
   String _strengthLabel(BuildContext context) {
     return switch (_passwordStrength) {
-      1 => _copy(context, tr: 'Zayıf', en: 'Weak', de: 'Schwach'),
-      2 => _copy(context, tr: 'Orta', en: 'Medium', de: 'Mittel'),
-      3 => _copy(context, tr: 'Güçlü', en: 'Strong', de: 'Stark'),
-      4 => _copy(context, tr: 'Çok güçlü', en: 'Very strong', de: 'Sehr stark'),
+      1 => context.tr3(tr: 'Zayıf', en: 'Weak', de: 'Schwach'),
+      2 => context.tr3(tr: 'Orta', en: 'Medium', de: 'Mittel'),
+      3 => context.tr3(tr: 'Güçlü', en: 'Strong', de: 'Stark'),
+      4 => context.tr3(tr: 'Çok güçlü', en: 'Very strong', de: 'Sehr stark'),
       _ => '',
-    };
-  }
-
-  String _copy(
-    BuildContext context, {
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (AppLocalizations.of(context).languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
     };
   }
 
@@ -114,8 +101,7 @@ class _AccountStepState extends State<AccountStep> {
       heroIcon: Icons.alternate_email_rounded,
       titleSpans: [
         TextSpan(
-          text: _copy(
-            context,
+          text: context.tr3(
             tr: 'Hesabını\n',
             en: 'Set up\n',
             de: 'Richte dein\n',
@@ -123,8 +109,7 @@ class _AccountStepState extends State<AccountStep> {
           style: const TextStyle(color: Colors.white),
         ),
         TextSpan(
-          text: _copy(
-            context,
+          text: context.tr3(
             tr: 'oluştur',
             en: 'your account',
             de: 'Konto ein',
@@ -132,8 +117,7 @@ class _AccountStepState extends State<AccountStep> {
           style: const TextStyle(color: AppColors.primary),
         ),
       ],
-      subtitle: _copy(
-        context,
+      subtitle: context.tr3(
         tr: 'E-posta adresin giriş için kullanılır. Şifren en az 8 karakter olmalı.',
         en: 'Your email is used for sign-in. Password must be at least 8 characters.',
         de: 'Deine E-Mail wird zum Anmelden verwendet. Passwort mindestens 8 Zeichen.',
@@ -143,8 +127,7 @@ class _AccountStepState extends State<AccountStep> {
         children: [
           RegisterTextField(
             controller: _emailController,
-            hint: _copy(
-              context,
+            hint: context.tr3(
               tr: 'E-posta adresin',
               en: 'Your email',
               de: 'Deine E-Mail',
@@ -158,8 +141,7 @@ class _AccountStepState extends State<AccountStep> {
           const SizedBox(height: 12),
           RegisterTextField(
             controller: _passwordController,
-            hint: _copy(
-              context,
+            hint: context.tr3(
               tr: 'Şifre oluştur',
               en: 'Create password',
               de: 'Passwort erstellen',

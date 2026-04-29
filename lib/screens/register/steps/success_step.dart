@@ -64,19 +64,6 @@ class _SuccessStepState extends State<SuccessStep>
     super.dispose();
   }
 
-  String _copy(
-    BuildContext context, {
-    required String tr,
-    required String en,
-    required String de,
-  }) {
-    return switch (AppLocalizations.of(context).languageCode) {
-      'en' => en,
-      'de' => de,
-      _ => tr,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -136,7 +123,7 @@ class _SuccessStepState extends State<SuccessStep>
                 children: [
                   TextSpan(
                     text:
-                        '${_copy(context, tr: "Hoş geldin", en: "Welcome", de: "Willkommen")},\n',
+                        '${context.tr3(tr: "Hoş geldin", en: "Welcome", de: "Willkommen")},\n',
                     style: const TextStyle(color: Colors.white),
                   ),
                   TextSpan(
@@ -148,8 +135,7 @@ class _SuccessStepState extends State<SuccessStep>
             ),
             const SizedBox(height: 14),
             Text(
-              _copy(
-                context,
+              context.tr3(
                 tr: 'Şimdi seni biraz tanıyalım — ilgi alanların ve gizlilik tercihlerinle profilini şekillendir.',
                 en: 'Now let us get to know you — shape your profile with interests and privacy preferences.',
                 de: 'Jetzt lerne dich kennen — gestalte dein Profil mit Interessen und Datenschutz.',
@@ -176,8 +162,7 @@ class _SuccessStepState extends State<SuccessStep>
                   elevation: 0,
                 ),
                 child: Text(
-                  _copy(
-                    context,
+                  context.tr3(
                     tr: 'Devam et',
                     en: 'Continue',
                     de: 'Weiter',
