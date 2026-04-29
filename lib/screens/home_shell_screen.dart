@@ -13,6 +13,13 @@ import 'signal_screen.dart';
 /// IndexedStack içindeki sekmeler arası geçişte state korunur.
 /// Radar (SignalScreen) ve Sohbet (InboxScreen) `embedded: true` ile
 /// gösterilir; bu modda kendi AppBar'larındaki "geri" oku gizlenir.
+///
+/// **Lazy init**: Sekmeler ilk seçildiklerinde inşa edilir
+/// (Harita default açık). Bu sayede SignalScreen'in 4 AnimationController'ı,
+/// InboxScreen'in Firestore stream'leri ve ProfileScreen'in profil yüklemesi
+/// kullanıcı o sekmeye gerçekten girene kadar başlatılmaz — pil ve ilk
+/// açılış performansını ciddi iyileştirir. Bir kez inşa edildiğinde sekme
+/// IndexedStack içinde tutulur, bir daha yeniden başlatılmaz.
 class HomeShellScreen extends StatefulWidget {
   const HomeShellScreen({super.key, this.initialIndex = 0});
 
@@ -23,12 +30,38 @@ class HomeShellScreen extends StatefulWidget {
 }
 
 class _HomeShellScreenState extends State<HomeShellScreen> {
+  static const int _tabCount = 4;
+
   late int _currentIndex;
+  late final Set<int> _builtTabs;
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex.clamp(0, 3);
+    _currentIndex = widget.initialIndex.clamp(0, _tabCount - 1);
+    // Açılışta sadece kullanıcının başlayacağı sekme inşa edilir.
+    _builtTabs = {_currentIndex};
+  }
+
+  void _selectTab(int index) {
+    if (index == _currentIndex) return;
+    setState(() {
+      _builtTabs.add(index);
+      _currentIndex = index;
+    });
+  }
+
+  /// Sekme inşası: ilk seçilene kadar `SizedBox.shrink()` placeholder.
+  /// Bir kez inşa edildiğinde IndexedStack içinde tutulur, state korunur.
+  Widget _buildTab(int index) {
+    if (!_builtTabs.contains(index)) return const SizedBox.shrink();
+    return switch (index) {
+      0 => const HomeScreen(),
+      1 => const SignalScreen(embedded: true),
+      2 => const InboxScreen(embedded: true),
+      3 => const ProfileScreen(),
+      _ => const SizedBox.shrink(),
+    };
   }
 
   String _copy({
@@ -98,12 +131,7 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
         backgroundColor: AppColors.bgMain,
         body: IndexedStack(
           index: _currentIndex,
-          children: const [
-            HomeScreen(),
-            SignalScreen(embedded: true),
-            InboxScreen(embedded: true),
-            ProfileScreen(),
-          ],
+          children: List.generate(_tabCount, _buildTab),
         ),
         bottomNavigationBar: _buildBottomNav(),
       ),
@@ -162,7 +190,7 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _currentIndex = index),
+        onTap: () => _selectTab(index),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
