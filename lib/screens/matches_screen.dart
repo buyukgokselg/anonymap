@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/pulse_api_service.dart';
 import '../theme/colors.dart';
 import 'chat_screen.dart';
+import 'discover_people_screen.dart';
 import 'profile_screen.dart';
 
 /// Dating-app "Matches" screen with two tabs:
@@ -328,6 +329,8 @@ class _MatchesScreenState extends State<MatchesScreen>
       return _buildEmpty(
         icon: Icons.favorite_rounded,
         text: l10n.phrase('Henüz eşleşmen yok. Keşfet ve sağa kaydırmayı dene.'),
+        actionLabel: l10n.phrase('Keşfet'),
+        onAction: _openDiscover,
       );
     }
     return RefreshIndicator(
@@ -368,6 +371,8 @@ class _MatchesScreenState extends State<MatchesScreen>
         text: l10n.phrase(
           'Henüz seni beğenen yok. Keşfet ve daha fazla profile bak.',
         ),
+        actionLabel: l10n.phrase('Keşfet'),
+        onAction: _openDiscover,
       );
     }
     return RefreshIndicator(
@@ -441,7 +446,12 @@ class _MatchesScreenState extends State<MatchesScreen>
     );
   }
 
-  Widget _buildEmpty({required IconData icon, required String text}) {
+  Widget _buildEmpty({
+    required IconData icon,
+    required String text,
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -458,9 +468,29 @@ class _MatchesScreenState extends State<MatchesScreen>
                 height: 1.4,
               ),
             ),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 18),
+              FilledButton.tonal(
+                onPressed: onAction,
+                style: FilledButton.styleFrom(
+                  backgroundColor:
+                      AppColors.modeFlirt.withValues(alpha: 0.18),
+                  foregroundColor: AppColors.modeFlirt,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 12),
+                ),
+                child: Text(actionLabel),
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  void _openDiscover() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const DiscoverPeopleScreen()),
     );
   }
 

@@ -1111,6 +1111,25 @@ class _DiscoverPeopleScreenState extends State<DiscoverPeopleScreen>
   }
 
   Widget _buildEmpty(AppLocalizations l10n) {
+    // Detect whether the empty state is "natural" (no filters) or filter-induced.
+    // We treat any non-default filter as restrictive enough to suggest a reset.
+    final hasActiveFilter = _filterRadiusKm != 25 ||
+        _filterMinAge != 18 ||
+        _filterMaxAge != 55 ||
+        _filterMode != null ||
+        _filterVerifiedOnly;
+
+    final title = hasActiveFilter
+        ? l10n.phrase('Filtreyle eşleşen kimse yok')
+        : l10n.phrase('Yeni eşleşmeler geliyor');
+    final subtitle = hasActiveFilter
+        ? l10n.phrase(
+            'Filtrelerini gevşetmeyi dene veya biraz sonra tekrar uğra.',
+          )
+        : l10n.phrase(
+            'Az sonra tekrar uğra — bölgendeki kişileri güncel tutuyoruz.',
+          );
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -1124,7 +1143,7 @@ class _DiscoverPeopleScreenState extends State<DiscoverPeopleScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              l10n.phrase('Yeni eşleşmeler geliyor'),
+              title,
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 20,
@@ -1134,9 +1153,7 @@ class _DiscoverPeopleScreenState extends State<DiscoverPeopleScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              l10n.phrase(
-                'Az sonra tekrar uğra — bölgendeki kişileri güncel tutuyoruz.',
-              ),
+              subtitle,
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
@@ -1144,6 +1161,40 @@ class _DiscoverPeopleScreenState extends State<DiscoverPeopleScreen>
               ),
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 20),
+            if (hasActiveFilter)
+              FilledButton.tonal(
+                onPressed: () async {
+                  setState(() {
+                    _filterRadiusKm = 25;
+                    _filterMinAge = 18;
+                    _filterMaxAge = 55;
+                    _filterMode = null;
+                    _filterVerifiedOnly = false;
+                  });
+                  await _loadPage(reset: true);
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor:
+                      AppColors.modeFlirt.withValues(alpha: 0.18),
+                  foregroundColor: AppColors.modeFlirt,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 12),
+                ),
+                child: Text(l10n.phrase('Filtreleri sıfırla')),
+              )
+            else
+              FilledButton.tonal(
+                onPressed: () => _loadPage(reset: true),
+                style: FilledButton.styleFrom(
+                  backgroundColor:
+                      AppColors.modeFlirt.withValues(alpha: 0.18),
+                  foregroundColor: AppColors.modeFlirt,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 12),
+                ),
+                child: Text(l10n.phrase('Yenile')),
+              ),
           ],
         ),
       ),

@@ -17,6 +17,7 @@ import '../widgets/shimmer_loading.dart';
 import 'activity_detail_screen.dart';
 import 'activity_group_chat_screen.dart';
 import 'chat_screen.dart';
+import 'create_activity_screen.dart';
 import 'my_activities_screen.dart';
 import 'profile_screen.dart';
 
@@ -1539,7 +1540,96 @@ class _InboxActivitiesStripState extends State<_InboxActivitiesStrip> {
         .toList()
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
 
-    if (upcoming.isEmpty && pending.isEmpty) return const SizedBox.shrink();
+    // Empty state: invite the user to create their first activity instead of
+    // collapsing silently — discoverability win for new accounts.
+    if (upcoming.isEmpty && pending.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const CreateActivityScreen(),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+              decoration: BoxDecoration(
+                color: AppColors.bgCard,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.primaryGlow.withValues(alpha: 0.18),
+                  style: BorderStyle.solid,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGlow.withValues(alpha: 0.14),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.add_rounded,
+                      color: AppColors.primaryGlow,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.tr3(
+                            tr: 'İlk etkinliğini oluştur',
+                            en: 'Create your first activity',
+                            de: 'Erstelle deine erste Aktivität',
+                          ),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          context.tr3(
+                            tr: 'Bir kahve, koşu ya da konser — herhangi bir şey.',
+                            en: 'A coffee, a run, a concert — anything.',
+                            de: 'Ein Kaffee, ein Lauf, ein Konzert — alles.',
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.55),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white.withValues(alpha: 0.45),
+                    size: 22,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     final highlight = upcoming.isNotEmpty ? upcoming.first : null;
 
