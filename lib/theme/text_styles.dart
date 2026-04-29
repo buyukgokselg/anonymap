@@ -44,7 +44,7 @@ class AppTextStyles {
   );
 
   static const label = TextStyle(
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: FontWeight.w700,
     color: AppColors.textSecondary,
     letterSpacing: 1.5,

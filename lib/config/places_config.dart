@@ -1,1 +1,4 @@
-const String kGooglePlacesApiKey = 'AIzaSyA_hI1UvJdIuEYqTqduFYPlc0uB-YK9cnU';
+import '../services/runtime_config_service.dart';
+
+String get kGooglePlacesApiKey => RuntimeConfigService.googlePlacesApiKey;
+bool get kHasGooglePlacesApiKey => RuntimeConfigService.hasGooglePlacesApiKey;

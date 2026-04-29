@@ -19,7 +19,13 @@ class AppColors {
   static const accentLight = Color(0xFF533483);
   static const neonCyan = Color(0xFF00D9FF);
 
-  // ── Intent Mod Renkleri ──
+  // ── Dating Niyet Modları (aktif) ──
+  static const modeFlirt = Color(0xFFFF5A8A);
+  static const modeFriends = Color(0xFF2DD4BF);
+  static const modeFun = Color(0xFFFB923C);
+  static const modeChill = Color(0xFFA78BFA);
+
+  // ── Eski Mekân Modları (gizli — feature flag arkasında) ──
   static const modeKesif = Color(0xFFE94560);
   static const modeSakinlik = Color(0xFF2ECC71);
   static const modeSosyal = Color(0xFF3498DB);
@@ -27,6 +33,7 @@ class AppColors {
   static const modeEglence = Color(0xFF9B59B6);
   static const modeAcikAlan = Color(0xFF1ABC9C);
   static const modeTopluluk = Color(0xFFE67E22);
+  static const modeAlisveris = Color(0xFFFF6B9D);
   static const modeOzelCevre = Color(0xFF7F8C8D);
 
   // ── Pulse Score Renkleri ──
@@ -46,7 +53,7 @@ class AppColors {
   // ── Metin Renkleri ──
   static const textPrimary = Colors.white;
   static const textSecondary = Color(0xFF8A9BB5);
-  static const textHint = Color(0xFF3D4F6B);
+  static const textHint = Color(0xFF5A6E8A);
   static const textMuted = Color(0xFF555E70);
 
   // ── Diğer ──

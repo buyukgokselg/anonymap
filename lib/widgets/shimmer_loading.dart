@@ -29,9 +29,10 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat();
-    _animation = Tween<double>(begin: -1, end: 2).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _animation = Tween<double>(
+      begin: -1,
+      end: 2,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -44,7 +45,7 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _animation,
-      builder: (_, __) {
+      builder: (context, child) {
         return Container(
           width: widget.width,
           height: widget.height,
@@ -55,7 +56,7 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
               end: Alignment(_animation.value.clamp(-1.0, 1.0), 0),
               colors: [
                 AppColors.bgCard,
-                AppColors.bgCard.withOpacity(0.5),
+                AppColors.bgCard.withValues(alpha: 0.5),
                 AppColors.bgCard,
               ],
             ),
@@ -76,7 +77,7 @@ class ShimmerCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.04)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
       ),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,9 +118,9 @@ class ShimmerSuggestionCard extends StatelessWidget {
       margin: const EdgeInsets.only(right: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.bgCard.withOpacity(0.9),
+        color: AppColors.bgCard.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.04)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
       ),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -34,9 +34,10 @@ class _AnimatedPressState extends State<AnimatedPress>
       duration: const Duration(milliseconds: 100),
       reverseDuration: const Duration(milliseconds: 200),
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: widget.scaleDown).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 1.0,
+      end: widget.scaleDown,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -70,10 +71,7 @@ class _AnimatedPressState extends State<AnimatedPress>
         if (widget.haptic) HapticFeedback.mediumImpact();
         widget.onLongPress?.call();
       },
-      child: ScaleTransition(
-        scale: _scaleAnim,
-        child: widget.child,
-      ),
+      child: ScaleTransition(scale: _scaleAnim, child: widget.child),
     );
   }
 }

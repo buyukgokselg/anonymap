@@ -1,6 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../localization/app_localizations.dart';
+import '../models/activity_model.dart';
+import '../models/chat_model.dart';
+import '../models/user_model.dart';
+import '../services/activity_service.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import '../services/network_media_headers.dart';
 import '../theme/colors.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/shimmer_loading.dart';
+import 'activity_detail_screen.dart';
+import 'activity_group_chat_screen.dart';
 import 'chat_screen.dart';
+import 'my_activities_screen.dart';
+import 'profile_screen.dart';
 
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
@@ -9,138 +27,1320 @@ class InboxScreen extends StatefulWidget {
   State<InboxScreen> createState() => _InboxScreenState();
 }
 
-class _InboxScreenState extends State<InboxScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _InboxScreenState extends State<InboxScreen> {
+  final _firestoreService = FirestoreService();
+  final Map<String, Future<UserModel?>> _userFutures = {};
 
-  // Demo geçici chatler (24 saat)
-  final List<Map<String, dynamic>> _tempChats = [
-    {
-      'name': 'Lena S.',
-      'username': '@lena_s',
-      'emoji': '👩',
-      'color': AppColors.modeSosyal,
-      'dist': '120m',
-      'compatibility': 87,
-      'pulse': 65,
-      'commonInterests': ['Müzik & Konser', 'Kafeler', 'Fotoğrafçılık'],
-      'bio': 'Hamburg keşfetmeyi seven biri ☕',
-      'anonymous': false,
-      'lastMessage': 'Buluşalım mı? ☕',
-      'time': '14:22',
-      'unread': 2,
-      'hoursLeft': 18,
-      'mode': 'Sosyal',
-      'modeColor': AppColors.modeSosyal,
-    },
-    {
-      'name': null,
-      'username': null,
-      'emoji': '🧑',
-      'color': AppColors.modeKesif,
-      'dist': '240m',
-      'compatibility': 72,
-      'pulse': 48,
-      'commonInterests': ['Seyahat', 'Fotoğrafçılık'],
-      'bio': null,
-      'anonymous': true,
-      'lastMessage': 'Merhaba! 👋',
-      'time': '13:45',
-      'unread': 1,
-      'hoursLeft': 22,
-      'mode': 'Keşif',
-      'modeColor': AppColors.modeKesif,
-    },
-  ];
+  String get _myUid => AuthService().currentUserId;
 
-  // Demo kalıcı DM'ler (arkadaş eklendi)
-  final List<Map<String, dynamic>> _dmChats = [
-    {
-      'name': 'Emre B.',
-      'username': '@emre_b',
-      'emoji': '🧑',
-      'color': AppColors.modeEglence,
-      'dist': '380m',
-      'compatibility': 65,
-      'pulse': 91,
-      'commonInterests': ['Barlar & Gece', 'Müzik & Konser'],
-      'bio': 'Gece kuşu 🦉',
-      'anonymous': false,
-      'lastMessage': 'Harika gece oldu! 🎵',
-      'time': 'Dün',
-      'unread': 0,
-      'online': true,
-      'mode': 'Eğlence',
-      'modeColor': AppColors.modeEglence,
-    },
-    {
-      'name': 'Sophie W.',
-      'username': '@sophie_w',
-      'emoji': '👩',
-      'color': AppColors.modeTopluluk,
-      'dist': '520m',
-      'compatibility': 48,
-      'pulse': 55,
-      'commonInterests': ['Yoga & Meditasyon', 'Parklar & Doğa'],
-      'bio': 'Doğa ve huzur 🌿',
-      'anonymous': false,
-      'lastMessage': 'Yarın parka gidelim mi?',
-      'time': 'Pazartesi',
-      'unread': 0,
-      'online': false,
-      'mode': 'Topluluk',
-      'modeColor': AppColors.modeTopluluk,
-    },
-    {
-      'name': 'Julia M.',
-      'username': '@julia_m',
-      'emoji': '👩',
-      'color': AppColors.modeSakinlik,
-      'dist': '290m',
-      'compatibility': 76,
-      'pulse': 44,
-      'commonInterests': ['Yoga & Meditasyon', 'Kitap & Okuma', 'Kafeler'],
-      'bio': 'Kitap kurdu 📚',
-      'anonymous': false,
-      'lastMessage': 'O kitabı bitirdim, süperdi!',
-      'time': 'Geçen hafta',
-      'unread': 0,
-      'online': false,
-      'mode': 'Sakinlik',
-      'modeColor': AppColors.modeSakinlik,
-    },
-  ];
+  String _copy({
+    required String tr,
+    required String en,
+    required String de,
+  }) {
+    return switch (context.l10n.languageCode) {
+      'en' => en,
+      'de' => de,
+      _ => tr,
+    };
+  }
 
-  // Arkadaş istekleri
-  final List<Map<String, dynamic>> _friendRequests = [
-    {
-      'name': 'Can T.',
-      'username': '@can_t',
-      'emoji': '🧑',
-      'color': AppColors.modeUretkenlik,
-      'compatibility': 43,
-      'pulse': 62,
-    },
-  ];
+  Future<UserModel?> _getUser(String uid) {
+    return _userFutures.putIfAbsent(uid, () => _firestoreService.getUser(uid));
+  }
 
+  String _formatRelative(DateTime? dateTime) {
+    final l10n = context.l10n;
+    if (dateTime == null) return l10n.t('now').toLowerCase();
+    final now = DateTime.now();
+    return l10n.relativeShort(now.difference(dateTime));
+  }
+
+  // ─── Yeni mesaj arama ───
+  Future<void> _openNewMessageSheet() async {
+    final controller = TextEditingController();
+    final results = ValueNotifier<List<UserModel>>(<UserModel>[]);
+    var loading = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.bgMain,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        final l10n = context.l10n;
+        Future<void> runSearch(String query) async {
+          if (query.trim().length < 2 || loading) return;
+          loading = true;
+          results.value = await _firestoreService.searchUsers(
+            query,
+            excludeUid: _myUid,
+          );
+          loading = false;
+        }
+
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          minChildSize: 0.4,
+          maxChildSize: 0.92,
+          builder: (context, scrollController) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Column(
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 8, bottom: 12),
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Title
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Text(
+                        l10n.phrase('Yeni Mesaj'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Search field
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: TextField(
+                    controller: controller,
+                    autofocus: true,
+                    style: const TextStyle(color: Colors.white),
+                    onChanged: runSearch,
+                    decoration: InputDecoration(
+                      hintText: l10n.phrase('Kişi ara...'),
+                      hintStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.35),
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: Colors.white.withValues(alpha: 0.4),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.bgCard,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Results
+                Expanded(
+                  child: ValueListenableBuilder<List<UserModel>>(
+                    valueListenable: results,
+                    builder: (context, users, _) {
+                      if (users.isEmpty) {
+                        return Center(
+                          child: Text(
+                            l10n.phrase('Kullanıcı adını yaz ve ara.'),
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.4),
+                              fontSize: 13,
+                            ),
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        controller: scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        itemCount: users.length,
+                        itemBuilder: (context, index) {
+                          final user = users[index];
+                          final name = user.hasProfile
+                              ? user.displayName
+                              : user.username;
+                          return ListTile(
+                            onTap: () async {
+                              final chat =
+                                  await _firestoreService.createOrGetDirectChat(
+                                _myUid,
+                                user.uid,
+                                isTemporary: false,
+                              );
+                              if (!mounted || !context.mounted) return;
+                              Navigator.pop(context);
+                              _openChat(chat, user);
+                            },
+                            leading: _buildAvatar(user, radius: 22),
+                            title: Text(
+                              name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '@${user.username}',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.45),
+                                fontSize: 13,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    controller.dispose();
+    results.dispose();
+  }
+
+  // ─── Arşivlenmiş sohbetleri göster ───
+  void _openArchivedChats(List<ChatModel> archivedChats) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _ArchivedChatsScreen(
+          chats: archivedChats,
+          firestoreService: _firestoreService,
+          myUid: _myUid,
+          getUser: _getUser,
+          openChat: _openChat,
+          formatRelative: _formatRelative,
+          buildAvatar: _buildAvatar,
+          l10n: context.l10n,
+        ),
+      ),
+    );
+  }
+
+  // ─── Sohbet aç ───
+  void _openChat(ChatModel chat, UserModel user) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          user: {
+            'uid': user.uid,
+            'chatId': chat.id,
+            'name': user.hasProfile ? user.displayName : user.username,
+            'username': '@${user.username}',
+            'bio': user.bio,
+            'isTemporary': chat.isTemporary,
+          },
+        ),
+      ),
+    );
+  }
+
+  // ─── İstek yanıtla ───
+  Future<void> _respondToRequest(
+    Map<String, dynamic> request,
+    bool accept,
+  ) async {
+    final fromUid = request['fromUid']?.toString() ?? '';
+    final requestId = request['id']?.toString() ?? '';
+    if (fromUid.isEmpty || requestId.isEmpty || _myUid.isEmpty) return;
+
+    if (accept) {
+      await _firestoreService.acceptFriendRequest(requestId, _myUid, fromUid);
+      final chat = await _firestoreService.createOrGetDirectChat(
+        _myUid,
+        fromUid,
+        isTemporary: false,
+      );
+      await _firestoreService.convertToFriendChat(chat.id);
+    } else {
+      await _firestoreService.declineFriendRequest(requestId);
+    }
+  }
+
+  // ─── Swipe to archive / delete ───
+  Future<bool> _confirmDismiss(ChatModel chat, DismissDirection dir) async {
+    if (dir == DismissDirection.endToStart) {
+      // Sil
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.bgCard,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            context.l10n.phrase('Sohbeti sil'),
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+          content: Text(
+            context.l10n.phrase('Bu sohbet kalıcı olarak silinecek.'),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(
+                context.l10n.phrase('Vazgeç'),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text(
+                'Sil',
+                style: TextStyle(
+                  color: AppColors.error,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (confirm == true) {
+        await _firestoreService.deleteChatForMe(chat.id);
+        return true;
+      }
+      return false;
+    } else {
+      // Arşivle
+      await _firestoreService.setChatArchived(chat.id, true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.phrase('Sohbet arşivlendi')),
+            backgroundColor: AppColors.bgCard,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            action: SnackBarAction(
+              label: context.l10n.phrase('Geri Al'),
+              textColor: AppColors.primary,
+              onPressed: () => _firestoreService.setChatArchived(chat.id, false),
+            ),
+          ),
+        );
+      }
+      return true;
+    }
+  }
+
+  // ─── Avatar helper ───
+  Widget _buildAvatar(UserModel user, {double radius = 26}) {
+    final name = user.hasProfile ? user.displayName : user.username;
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.primary.withValues(alpha: 0.14),
+      backgroundImage: user.profilePhotoUrl.isNotEmpty
+          ? NetworkMediaHeaders.imageProvider(user.profilePhotoUrl)
+          : null,
+      child: user.profilePhotoUrl.isEmpty
+          ? Text(
+              name.isNotEmpty ? name[0].toUpperCase() : '?',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: radius * 0.7,
+              ),
+            )
+          : null,
+    );
+  }
+
+  // ─── Grup (aktivite) chat item ───
+  Widget _buildGroupChatItem(ChatModel chat) {
+    final unread = chat.myUnread(_myUid);
+    final title = chat.title.isNotEmpty
+        ? chat.title
+        : context.l10n.phrase('Etkinlik sohbeti');
+    final lastMsg = chat.lastMessage.isNotEmpty
+        ? chat.lastMessage
+        : context.l10n.phrase('Sohbet başlatıldı');
+    return InkWell(
+      onTap: () => _openGroupChat(chat),
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.55),
+                    AppColors.primaryGlow.withValues(alpha: 0.35),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.10),
+                ),
+              ),
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.forum_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: unread > 0
+                                ? FontWeight.w800
+                                : FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _formatRelative(chat.lastMessageTime),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          lastMsg,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: unread > 0
+                                ? Colors.white.withValues(alpha: 0.78)
+                                : Colors.white.withValues(alpha: 0.45),
+                            fontSize: 12.5,
+                            fontWeight: unread > 0
+                                ? FontWeight.w600
+                                : FontWeight.w500,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                      if (unread > 0) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            unread > 99 ? '99+' : '$unread',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openGroupChat(ChatModel chat) async {
+    final activityId = chat.activityId;
+    if (activityId == null || activityId.isEmpty) return;
+    final activity = await ActivityService.instance.getActivity(activityId);
+    if (!mounted) return;
+    if (activity == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.phrase('Etkinlik bulunamadı.')),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ActivityGroupChatScreen(
+          activity: activity,
+          chat: chat,
+        ),
+      ),
+    );
+  }
+
+  // ─── Ana chat item ───
+  Widget _buildChatItem(ChatModel chat) {
+    final otherUid = chat.otherParticipant(_myUid);
+    return FutureBuilder<UserModel?>(
+      future: _getUser(otherUid),
+      builder: (context, snapshot) {
+        final user = snapshot.data;
+        if (user == null) return const SizedBox(height: 72);
+
+        final name = user.hasProfile ? user.displayName : user.username;
+        final unread = chat.myUnread(_myUid);
+        final lastMsg = chat.lastMessage.isNotEmpty
+            ? chat.lastMessage
+            : context.l10n.phrase('Sohbet başlatıldı');
+        final isMine = chat.lastSenderId == _myUid;
+
+        return Dismissible(
+          key: ValueKey(chat.id),
+          background: Container(
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.only(left: 24),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.archive_rounded, color: AppColors.warning),
+          ),
+          secondaryBackground: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 24),
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.delete_rounded, color: AppColors.error),
+          ),
+          confirmDismiss: (dir) => _confirmDismiss(chat, dir),
+          child: InkWell(
+            onTap: () => _openChat(chat, user),
+            onLongPress: () => _showChatActions(chat, user),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                children: [
+                  // Avatar
+                  Stack(
+                    children: [
+                      _buildAvatar(user),
+                      if (chat.isTemporary && !chat.isExpired)
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: AppColors.warning,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.bgMain,
+                                width: 2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.schedule_rounded,
+                              size: 8,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 14),
+                  // İçerik
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight:
+                                      unread > 0 ? FontWeight.w800 : FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              _formatRelative(chat.lastMessageTime),
+                              style: TextStyle(
+                                color: unread > 0
+                                    ? AppColors.primary
+                                    : Colors.white.withValues(alpha: 0.35),
+                                fontSize: 12,
+                                fontWeight: unread > 0
+                                    ? FontWeight.w700
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                isMine ? 'Sen: $lastMsg' : lastMsg,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: unread > 0
+                                      ? Colors.white.withValues(alpha: 0.8)
+                                      : Colors.white.withValues(alpha: 0.45),
+                                  fontSize: 13,
+                                  fontWeight: unread > 0
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                            if (unread > 0) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  unread > 99 ? '99+' : '$unread',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ─── Long-press menü ───
+  void _showChatActions(ChatModel chat, UserModel user) {
+    final l10n = context.l10n;
+    HapticFeedback.mediumImpact();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.bgCard,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 8, bottom: 16),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // User info header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  _buildAvatar(user, radius: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      user.hasProfile ? user.displayName : user.username,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Divider(color: Colors.white.withValues(alpha: 0.06), height: 1),
+            _actionTile(
+              icon: Icons.archive_outlined,
+              label: l10n.phrase('Arşivle'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _firestoreService.setChatArchived(chat.id, true);
+              },
+            ),
+            _actionTile(
+              icon: Icons.person_rounded,
+              label: l10n.phrase('Profili gör'),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProfileScreen(userId: user.uid),
+                  ),
+                );
+              },
+            ),
+            _actionTile(
+              icon: Icons.delete_outline_rounded,
+              label: l10n.phrase('Sohbeti sil'),
+              color: AppColors.error,
+              onTap: () async {
+                Navigator.pop(ctx);
+                await _firestoreService.deleteChatForMe(chat.id);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _actionTile({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: color ?? Colors.white, size: 22),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: color ?? Colors.white,
+          fontWeight: FontWeight.w500,
+          fontSize: 15,
+        ),
+      ),
+      onTap: onTap,
+    );
+  }
+
+  // ─── İstek banner (Instagram tarzı) ───
+  Widget _buildRequestsBanner(List<Map<String, dynamic>> requests) {
+    if (requests.isEmpty) return const SizedBox.shrink();
+
+    final firstUser = requests.first['user'] as UserModel;
+
+    return InkWell(
+      onTap: () => _openRequestsSheet(requests),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Row(
+          children: [
+            // Stacked avatars
+            SizedBox(
+              width: 52,
+              height: 52,
+              child: Stack(
+                children: [
+                  _buildAvatar(firstUser, radius: 22),
+                  if (requests.length > 1)
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.bgMain,
+                            width: 2,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${requests.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.phrase('Arkadaşlık İstekleri'),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    context.l10n.formatPhrase(
+                      '{count} yeni istek',
+                      {'count': requests.length},
+                    ),
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white54,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── İstek sheet ───
+  void _openRequestsSheet(List<Map<String, dynamic>> requests) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.bgMain,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        builder: (ctx, scrollController) => Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 8, bottom: 12),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                children: [
+                  Text(
+                    context.l10n.phrase('Arkadaşlık İstekleri'),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${requests.length}',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: requests.length,
+                itemBuilder: (_, i) {
+                  final request = requests[i];
+                  final user = request['user'] as UserModel;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.bgCard,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.05),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    ProfileScreen(userId: user.uid),
+                              ),
+                            );
+                          },
+                          child: _buildAvatar(user, radius: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user.hasProfile
+                                    ? user.displayName
+                                    : user.username,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              Text(
+                                '@${user.username}',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.45),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Kabul et
+                        SizedBox(
+                          height: 34,
+                          child: FilledButton(
+                            onPressed: () async {
+                              Navigator.pop(ctx);
+                              await _respondToRequest(request, true);
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              context.l10n.phrase('Kabul'),
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // Reddet
+                        SizedBox(
+                          height: 34,
+                          child: OutlinedButton(
+                            onPressed: () async {
+                              Navigator.pop(ctx);
+                              await _respondToRequest(request, false);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white70,
+                              side: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.15),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              context.l10n.phrase('Sil'),
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Arşiv banner ───
+  Widget _buildArchivedBanner(List<ChatModel> archivedChats) {
+    if (archivedChats.isEmpty) return const SizedBox.shrink();
+
+    return InkWell(
+      onTap: () => _openArchivedChats(archivedChats),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: AppColors.bgCard,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+              child: Icon(
+                Icons.archive_rounded,
+                color: Colors.white.withValues(alpha: 0.6),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.phrase('Arşivlenen Sohbetler'),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${archivedChats.length} ${context.l10n.phrase('sohbet')}',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── BUILD ───
   @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.bgMain,
+      appBar: AppBar(
+        backgroundColor: AppColors.bgMain,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          _copy(tr: 'Mesajlar', en: 'Messages', de: 'Nachrichten'),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.edit_square,
+              color: Colors.white,
+              size: 22,
+            ),
+            onPressed: _openNewMessageSheet,
+          ),
+        ],
+      ),
+      body: _myUid.isEmpty
+          ? Center(
+              child: Text(
+                context.l10n.phrase('Mesajları görmek için giriş gerekli.'),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+              ),
+            )
+          : StreamBuilder<List<Map<String, dynamic>>>(
+              stream:
+                  _firestoreService.getPendingFriendRequestsDetailed(_myUid),
+              builder: (context, requestSnapshot) {
+                final requests = requestSnapshot.data ?? const [];
+                return StreamBuilder<List<ChatModel>>(
+                  stream: _firestoreService.getChats(_myUid),
+                  builder: (context, chatSnapshot) {
+                    if (chatSnapshot.connectionState ==
+                            ConnectionState.waiting &&
+                        !chatSnapshot.hasData) {
+                      return ListView(
+                        padding: const EdgeInsets.all(20),
+                        children: List.generate(
+                          5,
+                          (_) => const Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: ShimmerCard(),
+                          ),
+                        ),
+                      );
+                    }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+                    final allChats = (chatSnapshot.data ?? const [])
+                        .where((chat) => !chat.isExpired)
+                        .toList();
 
-  int get _totalUnread {
-    int count = 0;
-    for (final c in _tempChats) { count += (c['unread'] as int? ?? 0); }
-    for (final c in _dmChats) { count += (c['unread'] as int? ?? 0); }
-    return count;
+                    final groupChats = allChats
+                        .where((chat) =>
+                            chat.isActivityGroup && !chat.isArchived)
+                        .toList()
+                      ..sort((a, b) {
+                        final aTime = a.lastMessageTime ?? a.createdAt;
+                        final bTime = b.lastMessageTime ?? b.createdAt;
+                        if (aTime == null && bTime == null) return 0;
+                        if (aTime == null) return 1;
+                        if (bTime == null) return -1;
+                        return bTime.compareTo(aTime);
+                      });
+                    final activeChats = allChats
+                        .where((chat) =>
+                            !chat.isArchived && !chat.isActivityGroup)
+                        .toList();
+                    final archivedChats = allChats
+                        .where((chat) =>
+                            chat.isArchived && !chat.isActivityGroup)
+                        .toList();
+
+                    if (requests.isEmpty &&
+                        activeChats.isEmpty &&
+                        groupChats.isEmpty &&
+                        archivedChats.isEmpty) {
+                      return Center(
+                        child: EmptyStateCard(
+                          icon: Icons.chat_bubble_outline_rounded,
+                          message: context.l10n.phrase(
+                            'Henüz mesajın yok. Yeni bir sohbet başlat!',
+                          ),
+                          actionLabel: context.l10n.phrase('Yeni Mesaj'),
+                          onAction: _openNewMessageSheet,
+                        ),
+                      );
+                    }
+
+                    return RefreshIndicator(
+                      color: AppColors.primary,
+                      backgroundColor: AppColors.bgCard,
+                      onRefresh: () async {
+                        // Stream zaten canlı, sadece haptic
+                        HapticFeedback.mediumImpact();
+                      },
+                      child: ListView(
+                        children: [
+                          // Arama çubuğu
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                            child: GestureDetector(
+                              onTap: _openNewMessageSheet,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.bgCard,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.search_rounded,
+                                      color:
+                                          Colors.white.withValues(alpha: 0.35),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      context.l10n.phrase('Ara...'),
+                                      style: TextStyle(
+                                        color: Colors.white
+                                            .withValues(alpha: 0.35),
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Etkinlik özeti
+                          const _InboxActivitiesStrip(),
+
+                          // İstekler banner
+                          _buildRequestsBanner(requests),
+
+                          // Arşiv banner
+                          _buildArchivedBanner(archivedChats),
+
+                          if (requests.isNotEmpty || archivedChats.isNotEmpty)
+                            Divider(
+                              color: Colors.white.withValues(alpha: 0.06),
+                              height: 1,
+                              indent: 20,
+                              endIndent: 20,
+                            ),
+
+                          // Grup sohbetleri
+                          if (groupChats.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+                              child: Text(
+                                _copy(
+                                  tr: 'Grup sohbetleri',
+                                  en: 'Group chats',
+                                  de: 'Gruppen-Chats',
+                                ),
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.45),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            ...groupChats.map(_buildGroupChatItem),
+                          ],
+
+                          // Mesaj başlığı
+                          if (activeChats.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+                              child: Text(
+                                _copy(
+                                  tr: 'Mesajlar',
+                                  en: 'Messages',
+                                  de: 'Nachrichten',
+                                ),
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.45),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+
+                          // Chat listesi
+                          ...activeChats.map(_buildChatItem),
+
+                          const SizedBox(height: 80),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+    );
   }
+}
+
+// ─── Arşivlenmiş sohbetler ekranı ───
+class _ArchivedChatsScreen extends StatelessWidget {
+  final List<ChatModel> chats;
+  final FirestoreService firestoreService;
+  final String myUid;
+  final Future<UserModel?> Function(String) getUser;
+  final void Function(ChatModel, UserModel) openChat;
+  final String Function(DateTime?) formatRelative;
+  final Widget Function(UserModel, {double radius}) buildAvatar;
+  final AppLocalizations l10n;
+
+  const _ArchivedChatsScreen({
+    required this.chats,
+    required this.firestoreService,
+    required this.myUid,
+    required this.getUser,
+    required this.openChat,
+    required this.formatRelative,
+    required this.buildAvatar,
+    required this.l10n,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -149,562 +1349,337 @@ class _InboxScreenState extends State<InboxScreen>
       appBar: AppBar(
         backgroundColor: AppColors.bgMain,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Mesajlar', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-        centerTitle: false,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.5), size: 24),
-            onPressed: () {},
+        title: Text(
+          l10n.phrase('Arşivlenen Sohbetler'),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Arkadaş istekleri
-          if (_friendRequests.isNotEmpty) _buildFriendRequestBanner(),
-
-          // Tab bar
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: AppColors.bgCard,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicator: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              labelColor: AppColors.primary,
-              unselectedLabelColor: Colors.white.withOpacity(0.35),
-              labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              dividerColor: Colors.transparent,
-              tabs: [
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.schedule_rounded, size: 16),
-                      const SizedBox(width: 6),
-                      const Text('Geçici'),
-                      if (_tempChats.any((c) => (c['unread'] as int) > 0)) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          width: 18, height: 18,
-                          decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                          child: Center(child: Text('${_tempChats.where((c) => (c['unread'] as int) > 0).length}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white))),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.chat_rounded, size: 16),
-                      const SizedBox(width: 6),
-                      const Text('Mesajlar'),
-                      if (_dmChats.any((c) => (c['unread'] as int) > 0)) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          width: 18, height: 18,
-                          decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                          child: Center(child: Text('${_dmChats.where((c) => (c['unread'] as int) > 0).length}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white))),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // İçerik
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildTempChats(),
-                _buildDmChats(),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Arkadaş İsteği Banner ──
-  Widget _buildFriendRequestBanner() {
-    return GestureDetector(
-      onTap: () => _showFriendRequests(),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [AppColors.primary.withOpacity(0.12), AppColors.bgCard]),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.15), shape: BoxShape.circle),
-              child: const Icon(Icons.person_add_rounded, size: 20, color: AppColors.primary),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Arkadaş İstekleri', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                  Text('${_friendRequests.length} yeni istek', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4))),
-                ],
-              ),
-            ),
-            Container(
-              width: 24, height: 24,
-              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-              child: Center(child: Text('${_friendRequests.length}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white))),
-            ),
-            const SizedBox(width: 4),
-            Icon(Icons.chevron_right_rounded, color: Colors.white.withOpacity(0.2)),
-          ],
         ),
       ),
+      body: chats.isEmpty
+          ? Center(
+              child: EmptyStateCard(
+                icon: Icons.archive_outlined,
+                message: l10n.phrase('Arşivde sohbet yok.'),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: chats.length,
+              itemBuilder: (context, index) {
+                final chat = chats[index];
+                final otherUid = chat.otherParticipant(myUid);
+                return FutureBuilder<UserModel?>(
+                  future: getUser(otherUid),
+                  builder: (context, snapshot) {
+                    final user = snapshot.data;
+                    if (user == null) return const SizedBox(height: 72);
+
+                    final name =
+                        user.hasProfile ? user.displayName : user.username;
+
+                    return Dismissible(
+                      key: ValueKey(chat.id),
+                      direction: DismissDirection.startToEnd,
+                      background: Container(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.only(left: 24),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.unarchive_rounded,
+                          color: AppColors.success,
+                        ),
+                      ),
+                      onDismissed: (_) {
+                        firestoreService.setChatArchived(chat.id, false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content:
+                                Text(l10n.phrase('Sohbet arşivden çıkarıldı')),
+                            backgroundColor: AppColors.bgCard,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        );
+                      },
+                      child: InkWell(
+                        onTap: () => openChat(chat, user),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          child: Row(
+                            children: [
+                              buildAvatar(user),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      chat.lastMessage.isNotEmpty
+                                          ? chat.lastMessage
+                                          : l10n.phrase('Sohbet başlatıldı'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.white
+                                            .withValues(alpha: 0.45),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                formatRelative(chat.lastMessageTime),
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
     );
   }
+}
 
-  // ── Geçici Chatler (24 saat) ──
-  Widget _buildTempChats() {
-    if (_tempChats.isEmpty) {
-      return _buildEmptyState(Icons.schedule_rounded, 'Geçici sohbet yok', 'Sinyal ekranından eşleşme bul.\n24 saat içinde arkadaş eklenmezse sohbet silinir.');
+class _InboxActivitiesStrip extends StatefulWidget {
+  const _InboxActivitiesStrip();
+
+  @override
+  State<_InboxActivitiesStrip> createState() => _InboxActivitiesStripState();
+}
+
+class _InboxActivitiesStripState extends State<_InboxActivitiesStrip> {
+  final ActivityService _service = ActivityService.instance;
+  StreamSubscription<void>? _listSub;
+  List<ActivityModel> _hosting = const [];
+  List<ActivityModel> _joined = const [];
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+    _listSub = _service.listChanged.listen((_) => _fetch());
+  }
+
+  @override
+  void dispose() {
+    _listSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetch() async {
+    try {
+      final results = await Future.wait([
+        _service.listHosting(),
+        _service.listJoined(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _hosting = results[0].items;
+        _joined = results[1].items;
+        _loaded = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loaded = true);
     }
+  }
 
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      children: [
-        // Bilgi
-        Container(
-          padding: const EdgeInsets.all(12),
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.04))),
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) return const SizedBox.shrink();
+
+    final pending = _joined
+        .where((a) => a.viewerStatus == ActivityViewerStatus.requested)
+        .toList();
+    final approved = _joined
+        .where((a) => a.viewerStatus == ActivityViewerStatus.approved)
+        .toList();
+    final upcoming = [..._hosting, ...approved]
+        .where((a) => !a.isPast && !a.isCancelled)
+        .toList()
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+
+    if (upcoming.isEmpty && pending.isEmpty) return const SizedBox.shrink();
+
+    final highlight = upcoming.isNotEmpty ? upcoming.first : null;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const MyActivitiesScreen()),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+          decoration: BoxDecoration(
+            color: AppColors.bgCard,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.primaryGlow.withValues(alpha: 0.22),
+            ),
+          ),
           child: Row(
             children: [
-              Icon(Icons.info_outline_rounded, size: 16, color: AppColors.warning.withOpacity(0.6)),
-              const SizedBox(width: 10),
-              Expanded(child: Text('Geçici sohbetler 24 saat sonra otomatik silinir. Devam etmek için arkadaş ekleyin.', style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.3), height: 1.4))),
-            ],
-          ),
-        ),
-        ..._tempChats.map((chat) => _buildTempChatTile(chat)),
-      ],
-    );
-  }
-
-  Widget _buildTempChatTile(Map<String, dynamic> chat) {
-    final color = chat['color'] as Color;
-    final isAnon = chat['anonymous'] == true;
-    final name = isAnon ? 'Anonim Kullanıcı' : (chat['name'] ?? 'Anonim');
-    final unread = chat['unread'] as int;
-    final hoursLeft = chat['hoursLeft'] as int;
-    final timeColor = hoursLeft <= 6 ? AppColors.error : (hoursLeft <= 12 ? AppColors.warning : Colors.white.withOpacity(0.3));
-
-    return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(user: chat))),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.bgCard,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: unread > 0 ? color.withOpacity(0.2) : Colors.white.withOpacity(0.04)),
-        ),
-        child: Row(
-          children: [
-            // Avatar + timer
-            Stack(
-              children: [
-                Container(
-                  width: 52, height: 52,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: color.withOpacity(0.12), border: Border.all(color: color.withOpacity(0.3), width: 1.5)),
-                  child: isAnon
-                      ? Icon(Icons.person_rounded, size: 24, color: color.withOpacity(0.5))
-                      : Center(child: Text(chat['emoji'] ?? '🧑', style: const TextStyle(fontSize: 24))),
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGlow.withValues(alpha: 0.18),
+                  shape: BoxShape.circle,
                 ),
-                // Geri sayım badge
-                Positioned(
-                  bottom: 0, right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                    decoration: BoxDecoration(color: AppColors.bgMain, borderRadius: BorderRadius.circular(8), border: Border.all(color: timeColor, width: 1)),
-                    child: Text('${hoursLeft}sa', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: timeColor)),
-                  ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.event_rounded,
+                  color: AppColors.primaryGlow,
+                  size: 20,
                 ),
-              ],
-            ),
-            const SizedBox(width: 14),
-            // Bilgi
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(child: Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white), overflow: TextOverflow.ellipsis)),
-                      if (isAnon) ...[const SizedBox(width: 4), Icon(Icons.visibility_off_rounded, size: 12, color: Colors.white.withOpacity(0.2))],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(chat['lastMessage'] ?? '', style: TextStyle(fontSize: 13, color: unread > 0 ? Colors.white.withOpacity(0.7) : Colors.white.withOpacity(0.35)), overflow: TextOverflow.ellipsis, maxLines: 1),
-                ],
               ),
-            ),
-            const SizedBox(width: 10),
-            // Sağ taraf
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(chat['time'] ?? '', style: TextStyle(fontSize: 11, color: unread > 0 ? AppColors.primary : Colors.white.withOpacity(0.2))),
-                const SizedBox(height: 6),
-                if (unread > 0)
-                  Container(
-                    width: 20, height: 20,
-                    decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                    child: Center(child: Text('$unread', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white))),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── DM Chatler (kalıcı) ──
-  Widget _buildDmChats() {
-    if (_dmChats.isEmpty) {
-      return _buildEmptyState(Icons.chat_rounded, 'Henüz mesaj yok', 'Geçici sohbetlerden arkadaş ekleyerek\nkalıcı mesajlaşmaya başla.');
-    }
-
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      children: [
-        // Online arkadaşlar (yatay)
-        if (_dmChats.any((c) => c['online'] == true)) ...[
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SizedBox(
-              height: 80,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: _dmChats.where((c) => c['online'] == true).map((chat) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: Column(
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Stack(
-                          children: [
-                            Container(
-                              width: 56, height: 56,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: (chat['color'] as Color).withOpacity(0.12),
-                                border: Border.all(color: AppColors.success, width: 2),
-                              ),
-                              child: Center(child: Text(chat['emoji'] ?? '🧑', style: const TextStyle(fontSize: 26))),
-                            ),
-                            Positioned(
-                              bottom: 2, right: 2,
-                              child: Container(width: 14, height: 14, decoration: BoxDecoration(color: AppColors.success, shape: BoxShape.circle, border: Border.all(color: AppColors.bgMain, width: 2.5))),
-                            ),
-                          ],
+                        const Text(
+                          'Etkinliklerin',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(chat['name']?.split(' ').first ?? '', style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5))),
+                        const SizedBox(width: 6),
+                        if (pending.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withValues(alpha: 0.22),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${pending.length} bekleyen',
+                              style: const TextStyle(
+                                color: AppColors.warning,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-        ],
-        // Chat listesi
-        ..._dmChats.map((chat) => _buildDmChatTile(chat)),
-      ],
-    );
-  }
-
-  Widget _buildDmChatTile(Map<String, dynamic> chat) {
-    final color = chat['color'] as Color;
-    final unread = chat['unread'] as int? ?? 0;
-    final online = chat['online'] == true;
-
-    return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(user: chat))),
-      onLongPress: () => _showChatOptions(chat),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.bgCard,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: unread > 0 ? color.withOpacity(0.2) : Colors.white.withOpacity(0.04)),
-        ),
-        child: Row(
-          children: [
-            // Avatar
-            Stack(
-              children: [
-                Container(
-                  width: 52, height: 52,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: color.withOpacity(0.12), border: Border.all(color: color.withOpacity(0.3), width: 1.5)),
-                  child: Center(child: Text(chat['emoji'] ?? '🧑', style: const TextStyle(fontSize: 24))),
-                ),
-                if (online)
-                  Positioned(
-                    bottom: 2, right: 2,
-                    child: Container(width: 14, height: 14, decoration: BoxDecoration(color: AppColors.success, shape: BoxShape.circle, border: Border.all(color: AppColors.bgCard, width: 2.5))),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(chat['name'] ?? '', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      // Mesaj durumu ikonu
-                      Icon(Icons.done_all_rounded, size: 14, color: AppColors.modeSosyal.withOpacity(0.5)),
-                      const SizedBox(width: 4),
-                      Flexible(child: Text(chat['lastMessage'] ?? '', style: TextStyle(fontSize: 13, color: unread > 0 ? Colors.white.withOpacity(0.7) : Colors.white.withOpacity(0.35)), overflow: TextOverflow.ellipsis, maxLines: 1)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(chat['time'] ?? '', style: TextStyle(fontSize: 11, color: unread > 0 ? AppColors.primary : Colors.white.withOpacity(0.2))),
-                const SizedBox(height: 6),
-                if (unread > 0)
-                  Container(
-                    width: 20, height: 20,
-                    decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                    child: Center(child: Text('$unread', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white))),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(IconData icon, String title, String subtitle) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 72, height: 72,
-              decoration: BoxDecoration(color: AppColors.bgCard, shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.06))),
-              child: Icon(icon, size: 32, color: Colors.white.withOpacity(0.15)),
-            ),
-            const SizedBox(height: 16),
-            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-            const SizedBox(height: 6),
-            Text(subtitle, textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.3), height: 1.5)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showFriendRequests() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 20),
-              const Text('Arkadaş İstekleri', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
-              const SizedBox(height: 16),
-              ..._friendRequests.map((req) => Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: AppColors.bgMain.withOpacity(0.5), borderRadius: BorderRadius.circular(14)),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 46, height: 46,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: (req['color'] as Color).withOpacity(0.15)),
-                      child: Center(child: Text(req['emoji'] ?? '🧑', style: const TextStyle(fontSize: 22))),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(req['name'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                      Text(req['username'] ?? '', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.35))),
-                    ])),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
-                        child: const Text('Kabul', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+                    const SizedBox(height: 2),
+                    Text(
+                      highlight != null
+                          ? '${highlight.title} \u00b7 ${_inboxFormatWhen(highlight.startsAt.toLocal())}'
+                          : '${pending.length} bekleyen istek',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.62),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(10)),
-                        child: Text('Reddet', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white.withOpacity(0.4))),
+                    const SizedBox(height: 2),
+                    Text(
+                      _hosting.isNotEmpty
+                          ? '${_hosting.length} d\u00fczenliyorsun \u00b7 ${approved.length} onayl\u0131'
+                          : '${approved.length} onayl\u0131 kat\u0131l\u0131m',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-              )),
-              SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showChatOptions(Map<String, dynamic> chat) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 16),
-              _chatOption(Icons.notifications_off_rounded, 'Sessize Al', Colors.white.withOpacity(0.5), () => Navigator.pop(context)),
-              _chatOption(Icons.archive_rounded, 'Arşivle', Colors.white.withOpacity(0.5), () => Navigator.pop(context)),
-              _chatOption(Icons.delete_rounded, 'Sohbeti Sil', AppColors.error, () { Navigator.pop(context); _showDeleteChatDialog(chat); }),
-              _chatOption(Icons.block_rounded, 'Engelle', AppColors.error, () { Navigator.pop(context); _showBlockChatDialog(chat); }),
-              SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _chatOption(IconData icon, String title, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(color: AppColors.bgMain.withOpacity(0.5), borderRadius: BorderRadius.circular(14)),
-        child: Row(children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 14),
-          Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: color)),
-        ]),
-      ),
-    );
-  }
-
-  void _showDeleteChatDialog(Map<String, dynamic> chat) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.bgCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Sohbeti Sil', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
-        content: Text('Bu sohbet her iki taraf için de kalıcı olarak silinecek. Bu işlem geri alınamaz.', style: TextStyle(color: Colors.white.withOpacity(0.5))),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Vazgeç', style: TextStyle(color: Colors.white.withOpacity(0.4)))),
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Sil', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700))),
-        ],
-      ),
-    );
-  }
-
-  void _showBlockChatDialog(Map<String, dynamic> chat) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.bgCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Engelle', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${chat['name']} engellenecek:', style: TextStyle(color: Colors.white.withOpacity(0.5))),
-            const SizedBox(height: 12),
-            _blockInfoRow('Tüm mesajlar her iki tarafta silinir'),
-            _blockInfoRow('Karşı taraf seni göremez'),
-            _blockInfoRow('Uçtan uca şifreli log yasal süreçler için saklanır'),
-            _blockInfoRow('72 saat içinde yedeklerden temizlenir'),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: AppColors.bgMain.withOpacity(0.5), borderRadius: BorderRadius.circular(10)),
-              child: Row(
-                children: [
-                  Icon(Icons.lock_rounded, size: 14, color: AppColors.primary.withOpacity(0.5)),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('Loglar uçtan uca şifrelidir. Mahkeme kararı olmadan kimse erişemez.', style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.3), height: 1.4))),
-                ],
               ),
-            ),
-          ],
+              if (highlight != null)
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ActivityDetailScreen(
+                          activityId: highlight.id,
+                          initialActivity: highlight,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.white.withValues(alpha: 0.55),
+                    size: 18,
+                  ),
+                ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Vazgeç', style: TextStyle(color: Colors.white.withOpacity(0.4)))),
-          TextButton(onPressed: () { Navigator.pop(context); setState(() => _dmChats.remove(chat)); }, child: const Text('Engelle ve Sil', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700))),
-        ],
       ),
     );
   }
+}
 
-  Widget _blockInfoRow(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.check_circle_rounded, size: 14, color: AppColors.primary.withOpacity(0.5)),
-          const SizedBox(width: 8),
-          Flexible(child: Text(text, style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.45), height: 1.3))),
-        ],
-      ),
-    );
-  }
+String _inboxFormatWhen(DateTime startsAt) {
+  final now = DateTime.now();
+  final isSameDay = now.year == startsAt.year &&
+      now.month == startsAt.month &&
+      now.day == startsAt.day;
+  final tomorrow = now.add(const Duration(days: 1));
+  final isTomorrow = tomorrow.year == startsAt.year &&
+      tomorrow.month == startsAt.month &&
+      tomorrow.day == startsAt.day;
+  final time =
+      '${startsAt.hour.toString().padLeft(2, '0')}.${startsAt.minute.toString().padLeft(2, '0')}';
+  if (isSameDay) return 'Bug\u00fcn $time';
+  if (isTomorrow) return 'Yar\u0131n $time';
+  return '${startsAt.day}.${startsAt.month.toString().padLeft(2, '0')} $time';
 }

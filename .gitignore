@@ -77,6 +77,8 @@ app.*.map.json
 /backend/runlogs/
 /backend/_api_verify/
 /backend/_verify/
+/backend/.vs/
+**/.vs/
 **/publish/
 **/publish*/
 **/publish*.zip

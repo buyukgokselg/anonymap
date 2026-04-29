@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import '../localization/app_localizations.dart';
 import '../theme/colors.dart';
+import '../services/auth_service.dart';
+import 'home_shell_screen.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -61,10 +64,13 @@ class _SplashScreenState extends State<SplashScreen>
 
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
+        final target = AuthService().isLoggedIn
+            ? const HomeShellScreen()
+            : const LoginScreen();
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, _, _) => const LoginScreen(),
+            pageBuilder: (_, _, _) => target,
             transitionsBuilder: (_, anim, _, child) =>
                 FadeTransition(opacity: anim, child: child),
             transitionDuration: const Duration(milliseconds: 600),
@@ -109,17 +115,17 @@ class _SplashScreenState extends State<SplashScreen>
                       borderRadius: BorderRadius.circular(30),
                       color: AppColors.bgCard,
                       border: Border.all(
-                        color: AppColors.primary.withOpacity(0.4),
+                        color: AppColors.primary.withValues(alpha: 0.4),
                         width: 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withOpacity(0.3),
+                          color: AppColors.primary.withValues(alpha: 0.3),
                           blurRadius: 40,
                           spreadRadius: 2,
                         ),
                         BoxShadow(
-                          color: AppColors.primary.withOpacity(0.1),
+                          color: AppColors.primary.withValues(alpha: 0.1),
                           blurRadius: 80,
                           spreadRadius: 10,
                         ),
@@ -162,11 +168,15 @@ class _SplashScreenState extends State<SplashScreen>
                 FadeTransition(
                   opacity: _taglineFade,
                   child: Text(
-                    'Feel the City\'s Pulse',
+                    switch (context.l10n.languageCode) {
+                      'en' => 'Feel the City\'s Pulse',
+                      'de' => 'Spüre den Puls der Stadt',
+                      _ => 'Şehrin Nabzını Hisset',
+                    },
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
-                      color: Colors.white.withOpacity(0.4),
+                      color: Colors.white.withValues(alpha: 0.4),
                       letterSpacing: 2,
                     ),
                   ),

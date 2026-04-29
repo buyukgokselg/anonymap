@@ -20,12 +20,16 @@ import 'matches_screen.dart';
 import 'my_activities_screen.dart';
 import 'shorts_screen.dart';
 import 'create_post_screen.dart';
+import 'activity_detail_screen.dart';
+import 'create_activity_screen.dart';
 import '../widgets/animated_press.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/notification_bell_button.dart';
 import '../widgets/page_transitions.dart';
 import '../services/places_service.dart';
+import '../services/activity_service.dart';
 import '../models/user_model.dart';
+import '../models/activity_model.dart';
 import '../navigation/app_route_observer.dart';
 import '../config/app_features.dart';
 import '../services/place_focus_service.dart';
@@ -33,6 +37,11 @@ import '../services/realtime_service.dart';
 import '../widgets/shimmer_loading.dart';
 
 final Point _kDefaultMapCenter = Point(coordinates: Position(9.9872, 53.5488));
+
+/// Top-level "what am I looking at" lens for the map.
+/// people = nearby users + place heatmap (the legacy mode-driven view).
+/// activities = pinned upcoming activities (host-created events).
+enum HomeLens { people, activities }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -45,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin, RouteAware {
   int _selectedMode = 0;
   int _selectedPlaceLens = 0;
+  HomeLens _currentLens = HomeLens.people;
 
   final _locationService = LocationService();
   final _firestoreService = FirestoreService();
@@ -86,8 +96,12 @@ class _HomeScreenState extends State<HomeScreen>
   List<Map<String, dynamic>> _nearbyPlaces = [];
   List<Map<String, dynamic>> _popularPlaces = [];
   List<UserModel> _modeNearbyUsers = [];
+  List<ActivityModel> _nearbyActivities = [];
   Map<String, dynamic>? _selectedPlace;
   String _popularPlacesCacheKey = '';
+  bool _loadingActivities = false;
+  DateTime _lastActivitiesFetch = DateTime.fromMillisecondsSinceEpoch(0);
+  StreamSubscription<void>? _activityListSub;
 
   int _pulseScore = 72;
   String _densityLabel = 'Orta';
@@ -190,6 +204,11 @@ class _HomeScreenState extends State<HomeScreen>
         _maybeFetchPlaces(force: true);
       });
     });
+    _activityListSub = ActivityService.instance.listChanged.listen((_) {
+      if (!mounted || _currentPosition == null) return;
+      if (_currentLens != HomeLens.activities) return;
+      unawaited(_fetchNearbyActivities(force: true));
+    });
     _startHomeFlow();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final pending = PlaceFocusService.instance.takePendingRequest();
@@ -219,6 +238,7 @@ class _HomeScreenState extends State<HomeScreen>
     _positionSub?.cancel();
     _placeFocusSub?.cancel();
     _presenceChangedSub?.cancel();
+    _activityListSub?.cancel();
     _modeSelectorController.dispose();
     _presenceRefreshDebounce?.cancel();
     _nearbyRefreshTimer?.cancel();
@@ -394,6 +414,9 @@ class _HomeScreenState extends State<HomeScreen>
       }
 
       _maybeFetchPlaces();
+      if (_currentLens == HomeLens.activities) {
+        unawaited(_fetchNearbyActivities());
+      }
 
       if (_mapboxMap != null &&
           _mapStyleReady &&
@@ -847,6 +870,33 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _syncMapDecorations({bool force = false}) async {
     if (_mapboxMap == null || !_mapStyleReady) return;
+
+    // When the activity lens is active, hide places/people decorations and
+    // render activity pins instead.
+    if (_currentLens == HomeLens.activities) {
+      await _safeRemoveLayer('density-heat');
+      await _safeRemoveLayer('mode-user-glow');
+      await _safeRemoveLayer('mode-user-core');
+      await _safeRemoveSource('density-source');
+      await _safeRemoveSource('mode-users-source');
+
+      final signature =
+          'activities|${_currentMode.id}|${_mapActivitySignature()}';
+      if (!force && signature == _lastRenderedPlacesSignature) {
+        return;
+      }
+      _lastRenderedPlacesSignature = signature;
+      _heatmapAdded = false;
+      await _addActivityMarkers();
+      return;
+    }
+
+    // People lens — clear any leftover activity layers, then render the
+    // legacy places + nearby-users decorations.
+    await _safeRemoveLayer('activity-pin-glow');
+    await _safeRemoveLayer('activity-pin-core');
+    await _safeRemoveSource('activities-source');
+
     if (_nearbyPlaces.isEmpty) {
       await _safeRemoveLayer('density-heat');
       await _safeRemoveLayer('mode-user-glow');
@@ -857,7 +907,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     final signature =
-        '${_currentMode.id}|$_selectedPlaceLens|${_mapRenderSignature()}|${_mapUserSignature()}';
+        'people|${_currentMode.id}|$_selectedPlaceLens|${_mapRenderSignature()}|${_mapUserSignature()}';
     if (!force && signature == _lastRenderedPlacesSignature) {
       return;
     }
@@ -866,6 +916,157 @@ class _HomeScreenState extends State<HomeScreen>
     _heatmapAdded = false;
     await _addHeatmapLayer();
     await _addPlaceMarkers();
+  }
+
+  String _mapActivitySignature() {
+    return _nearbyActivities
+        .take(40)
+        .map(
+          (a) =>
+              '${a.id}:${a.latitude}:${a.longitude}:${a.startsAt.millisecondsSinceEpoch}:${a.currentParticipantCount}',
+        )
+        .join('|');
+  }
+
+  String _generateActivityPoints() {
+    final features = _nearbyActivities
+        .where((a) => a.latitude != 0.0 && a.longitude != 0.0)
+        .map((a) {
+          final weight =
+              (a.currentParticipantCount.clamp(0, 30) / 30).clamp(0.2, 1.0);
+          return '{"type":"Feature","geometry":{"type":"Point","coordinates":[${a.longitude},${a.latitude}]},"properties":{"weight":$weight}}';
+        })
+        .join(',');
+    return '{"type":"FeatureCollection","features":[$features]}';
+  }
+
+  Future<void> _addActivityMarkers() async {
+    if (_mapboxMap == null || !_mapStyleReady) return;
+    try {
+      await _safeRemoveLayer('activity-pin-glow');
+      await _safeRemoveLayer('activity-pin-core');
+      await _safeRemoveSource('activities-source');
+
+      if (_nearbyActivities.isEmpty) return;
+
+      await _mapboxMap!.style.addSource(
+        GeoJsonSource(
+          id: 'activities-source',
+          data: _generateActivityPoints(),
+        ),
+      );
+
+      await _mapboxMap!.style.addLayer(
+        CircleLayer(
+          id: 'activity-pin-glow',
+          sourceId: 'activities-source',
+          circleRadiusExpression: const <Object>[
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            10,
+            12,
+            14,
+            22,
+          ],
+          circleColor: _modeColorInt(0.20),
+          circleBlur: 1.0,
+          circleOpacity: 0.9,
+        ),
+      );
+
+      await _mapboxMap!.style.addLayer(
+        CircleLayer(
+          id: 'activity-pin-core',
+          sourceId: 'activities-source',
+          circleRadiusExpression: const <Object>[
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            10,
+            6,
+            14,
+            10,
+          ],
+          circleColor: _modeColorInt(0.95),
+          circleStrokeWidth: 2.5,
+          circleStrokeColor: _colorToRgba(Colors.white, 0.85),
+          circleOpacity: 0.98,
+        ),
+      );
+    } catch (e, st) {
+      debugPrint('Activity marker ekleme hatasi: $e\n$st');
+    }
+  }
+
+  Future<void> _fetchNearbyActivities({bool force = false}) async {
+    final pos = _currentPosition;
+    if (pos == null || _loadingActivities) return;
+    final now = DateTime.now();
+    if (!force &&
+        _nearbyActivities.isNotEmpty &&
+        now.difference(_lastActivitiesFetch).inSeconds < 30) {
+      return;
+    }
+    _lastActivitiesFetch = now;
+    if (mounted) setState(() => _loadingActivities = true);
+    try {
+      final result = await ActivityService.instance.search(
+        ActivityListQueryParams(
+          centerLatitude: pos.latitude,
+          centerLongitude: pos.longitude,
+          radiusKm: 8.0,
+          mode: _currentMode.id,
+          limit: 40,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _nearbyActivities = result.items
+            .where((a) =>
+                a.status == ActivityStatus.published &&
+                !a.isPast)
+            .toList();
+        _loadingActivities = false;
+      });
+      if (_currentLens == HomeLens.activities) {
+        await _syncMapDecorations(force: true);
+      }
+    } catch (e, st) {
+      debugPrint('Activity fetch failed: $e\n$st');
+      if (mounted) setState(() => _loadingActivities = false);
+    }
+  }
+
+  void _onLensChanged(HomeLens lens) {
+    if (_currentLens == lens) return;
+    setState(() {
+      _currentLens = lens;
+      _showBottomCard = false;
+    });
+    _lastRenderedPlacesSignature = '';
+    if (lens == HomeLens.activities) {
+      unawaited(_fetchNearbyActivities(force: true));
+    } else {
+      unawaited(_syncMapDecorations(force: true));
+    }
+  }
+
+  void _focusActivity(ActivityModel activity) {
+    if (activity.latitude == 0.0 && activity.longitude == 0.0) return;
+    _flyToCoordinates(activity.longitude, activity.latitude, zoom: 14.5);
+  }
+
+  void _openActivityDetail(ActivityModel activity) {
+    Navigator.push(
+      context,
+      SlideUpRoute(
+        page: ActivityDetailScreen(
+          activityId: activity.id,
+          initialActivity: activity,
+        ),
+      ),
+    );
   }
 
   Future<void> _safeRemoveLayer(String id) async {
@@ -1516,6 +1717,9 @@ class _HomeScreenState extends State<HomeScreen>
     }
     _updateHeatmapForMode();
     _maybeFetchPlaces(force: true);
+    if (_currentLens == HomeLens.activities) {
+      unawaited(_fetchNearbyActivities(force: true));
+    }
 
     if (showInfo) {
       Future.delayed(const Duration(seconds: 3), () {
@@ -1876,6 +2080,18 @@ class _HomeScreenState extends State<HomeScreen>
             _buildTopBar(MediaQuery.of(context).padding.top + 8),
             _buildHeroCard(MediaQuery.of(context).padding.top + 8),
             _buildActionRail(MediaQuery.of(context).padding.top + 8),
+            if (_bottomDeckCollapsed)
+              Positioned(
+                bottom: bottomPadding + 80,
+                left: 12,
+                right: 12,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 260),
+                    child: _buildLensToggle(),
+                  ),
+                ),
+              ),
             _buildBottomDeck(bottomPadding),
             if (_showBottomCard) _buildDetailCard(),
           ],
@@ -2956,6 +3172,126 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildLensToggle() {
+    final modeColor = _currentMode.color;
+    Widget seg(HomeLens lens, IconData icon, String label) {
+      final selected = _currentLens == lens;
+      return Expanded(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _onLensChanged(lens),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: selected
+                  ? modeColor.withValues(alpha: 0.20)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: selected
+                    ? modeColor.withValues(alpha: 0.55)
+                    : Colors.transparent,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 14,
+                  color: selected
+                      ? modeColor
+                      : Colors.white.withValues(alpha: 0.55),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: selected
+                        ? modeColor
+                        : Colors.white.withValues(alpha: 0.55),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          seg(
+            HomeLens.people,
+            Icons.person_pin_circle_rounded,
+            _copy(tr: 'İnsanlar', en: 'People', de: 'Leute'),
+          ),
+          const SizedBox(width: 4),
+          seg(
+            HomeLens.activities,
+            Icons.event_rounded,
+            _copy(tr: 'Etkinlik', en: 'Events', de: 'Events'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeopleActionChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.28)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildPlaceLensChip(String label, int index) {
     final selected = _selectedPlaceLens == index;
     final color = _currentMode.color;
@@ -3003,6 +3339,269 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildActivityRailCard(ActivityModel a) {
+    final modeColor = _currentMode.color;
+    final pos = _currentPosition;
+    String distanceLabel = '';
+    if (pos != null && a.latitude != 0.0 && a.longitude != 0.0) {
+      final meters = geo.Geolocator.distanceBetween(
+        pos.latitude,
+        pos.longitude,
+        a.latitude,
+        a.longitude,
+      );
+      distanceLabel = meters < 1000
+          ? '${meters.round()} m'
+          : '${(meters / 1000).toStringAsFixed(1)} km';
+    }
+
+    final timeLabel = _formatActivityWhen(a.startsAt);
+
+    return GestureDetector(
+      onTap: () {
+        _focusActivity(a);
+        _openActivityDetail(a);
+      },
+      child: Container(
+        width: 220,
+        margin: const EdgeInsets.only(right: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.bgCard.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: modeColor.withValues(alpha: 0.22)),
+          boxShadow: [
+            BoxShadow(
+              color: modeColor.withValues(alpha: 0.10),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: modeColor.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    timeLabel,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: modeColor,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                if (distanceLabel.isNotEmpty)
+                  Text(
+                    distanceLabel,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              a.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(
+                  Icons.place_rounded,
+                  size: 12,
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+                const SizedBox(width: 3),
+                Expanded(
+                  child: Text(
+                    a.locationName.isNotEmpty
+                        ? a.locationName
+                        : (a.city.isNotEmpty ? a.city : '—'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withValues(alpha: 0.55),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.group_rounded,
+                  size: 12,
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  a.maxParticipants != null
+                      ? '${a.currentParticipantCount}/${a.maxParticipants}'
+                      : '${a.currentParticipantCount}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.6),
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 14,
+                  color: modeColor.withValues(alpha: 0.85),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatActivityWhen(DateTime startsAt) {
+    final now = DateTime.now();
+    final diff = startsAt.difference(now);
+    if (diff.isNegative) {
+      return _copy(tr: 'Şimdi', en: 'Now', de: 'Jetzt');
+    }
+    if (diff.inMinutes < 60) {
+      return _copy(
+        tr: '${diff.inMinutes} dk sonra',
+        en: 'in ${diff.inMinutes} min',
+        de: 'in ${diff.inMinutes} Min',
+      );
+    }
+    final sameDay = startsAt.year == now.year &&
+        startsAt.month == now.month &&
+        startsAt.day == now.day;
+    final hh = startsAt.hour.toString().padLeft(2, '0');
+    final mm = startsAt.minute.toString().padLeft(2, '0');
+    if (sameDay) {
+      return _copy(tr: 'Bugün $hh:$mm', en: 'Today $hh:$mm', de: 'Heute $hh:$mm');
+    }
+    final tomorrow = now.add(const Duration(days: 1));
+    final isTomorrow = startsAt.year == tomorrow.year &&
+        startsAt.month == tomorrow.month &&
+        startsAt.day == tomorrow.day;
+    if (isTomorrow) {
+      return _copy(
+        tr: 'Yarın $hh:$mm',
+        en: 'Tomorrow $hh:$mm',
+        de: 'Morgen $hh:$mm',
+      );
+    }
+    return '${startsAt.day}/${startsAt.month} $hh:$mm';
+  }
+
+  Widget _buildActivitiesEmptyState() {
+    final modeColor = _currentMode.color;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.event_available_rounded,
+            color: modeColor.withValues(alpha: 0.7),
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _copy(
+                    tr: 'Yakında etkinlik yok',
+                    en: 'No nearby activities',
+                    de: 'Keine Aktivitäten in der Nähe',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _copy(
+                    tr: 'İlk hareketi sen başlat — bir etkinlik aç.',
+                    en: 'Be the first — host an activity.',
+                    de: 'Mach den Anfang — erstelle eine Aktivität.',
+                  ),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    height: 1.4,
+                    color: Colors.white.withValues(alpha: 0.55),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              SlideUpRoute(page: const CreateActivityScreen()),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: modeColor.withValues(alpha: 0.22),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: modeColor.withValues(alpha: 0.45)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add_rounded, size: 14, color: modeColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    _copy(tr: 'Aç', en: 'Host', de: 'Erstellen'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: modeColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -3374,14 +3973,6 @@ class _HomeScreenState extends State<HomeScreen>
             }),
             const SizedBox(height: 8),
             _buildMapButton(
-              Icons.wifi_tethering_rounded,
-              () => Navigator.push(
-                context,
-                FadeScaleRoute(page: const SignalScreen()),
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildMapButton(
               Icons.compass_calibration_rounded,
               () => Navigator.push(
                 context,
@@ -3394,14 +3985,6 @@ class _HomeScreenState extends State<HomeScreen>
               () => Navigator.push(
                 context,
                 SlideUpRoute(page: const MatchesScreen()),
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildMapButton(
-              Icons.event_rounded,
-              () => Navigator.push(
-                context,
-                SlideUpRoute(page: const MyActivitiesScreen()),
               ),
             ),
             const SizedBox(height: 8),
@@ -3418,68 +4001,6 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
             ],
-            const SizedBox(height: 8),
-            Stack(
-              children: [
-                _buildMapButton(
-                  Icons.chat_rounded,
-                  () => Navigator.push(
-                    context,
-                    SlideUpRoute(page: const InboxScreen()),
-                  ),
-                ),
-                if (_myUid.isNotEmpty)
-                  StreamBuilder(
-                    stream: _firestoreService.getChats(_myUid),
-                    builder: (context, snapshot) {
-                      final chats = snapshot.data ?? const [];
-                      final unreadChats = chats.fold<int>(
-                        0,
-                        (sum, chat) => sum + chat.myUnread(_myUid),
-                      );
-                      return StreamBuilder(
-                        stream: _firestoreService.getPendingFriendRequests(
-                          _myUid,
-                        ),
-                        builder: (context, requestSnapshot) {
-                          final pendingRequests =
-                              requestSnapshot.data?.docs.length ?? 0;
-                          final totalUnread = unreadChats + pendingRequests;
-                          if (totalUnread <= 0) {
-                            return const SizedBox.shrink();
-                          }
-                          return Positioned(
-                            top: 0,
-                            right: 0,
-                            child: Container(
-                              width: 17,
-                              height: 17,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.bgMain,
-                                  width: 2,
-                                ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  totalUnread > 9 ? '9+' : '$totalUnread',
-                                  style: const TextStyle(
-                                    fontSize: 7,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-              ],
-            ),
           ],
         ),
       ),
@@ -3565,23 +4086,14 @@ class _HomeScreenState extends State<HomeScreen>
                             borderRadius: BorderRadius.circular(999),
                           ),
                         ),
-                        Expanded(
-                          child: Text(
-                            _copy(
-                              tr: 'Şehrin anlık seçimi',
-                              en: 'City picks now',
-                              de: 'Aktuelle Auswahl',
-                            ),
-                            style: TextStyle(
-                              fontSize: compactDeck ? 15 : 16,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        if (_loadingPlaces)
+                        Expanded(child: _buildLensToggle()),
+                        const SizedBox(width: 8),
+                        if ((_loadingPlaces &&
+                                _currentLens == HomeLens.people) ||
+                            (_loadingActivities &&
+                                _currentLens == HomeLens.activities))
                           Padding(
-                            padding: const EdgeInsets.only(right: 10),
+                            padding: const EdgeInsets.only(right: 6),
                             child: SizedBox(
                               width: 14,
                               height: 14,
@@ -3598,121 +4110,211 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ],
                     ),
-                    SizedBox(height: compactDeck ? 6 : 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Text(
-                        _copy(
-                          tr: 'Seçtiğin moda göre en yüksek pulse taşıyan ve şu ana en uygun görünen yerler.',
-                          en: 'Places with the highest pulse and strongest fit for your selected mode right now.',
-                          de: 'Orte mit dem stärksten Pulse und der besten Passung zu deinem aktuellen Modus.',
-                        ),
-                        style: TextStyle(
-                          fontSize: compactDeck ? 11.5 : 12,
-                          height: 1.4,
-                          color: Colors.white.withValues(alpha: 0.5),
+                    SizedBox(height: compactDeck ? 8 : 10),
+                    if (_currentLens == HomeLens.people) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          _copy(
+                            tr: 'Seçtiğin moda göre en yüksek pulse taşıyan ve şu ana en uygun görünen yerler.',
+                            en: 'Places with the highest pulse and strongest fit for your selected mode right now.',
+                            de: 'Orte mit dem stärksten Pulse und der besten Passung zu deinem aktuellen Modus.',
+                          ),
+                          style: TextStyle(
+                            fontSize: compactDeck ? 11.5 : 12,
+                            height: 1.4,
+                            color: Colors.white.withValues(alpha: 0.5),
+                          ),
                         ),
                       ),
-                    ),
-                    SizedBox(height: compactDeck ? 10 : 12),
-                    SizedBox(
-                      height: 42,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
+                      SizedBox(height: compactDeck ? 8 : 10),
+                      Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 2),
-                        children: [
-                          _buildPlaceLensChip(l10n.phrase('Genel'), 0),
-                          _buildPlaceLensChip(
-                            _copy(tr: 'En Yakın', en: 'Nearest', de: 'Nächste'),
-                            1,
-                          ),
-                          _buildPlaceLensChip(
-                            _copy(
-                              tr: 'En Popüler',
-                              en: 'Popular',
-                              de: 'Beliebt',
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildPeopleActionChip(
+                                icon: Icons.wifi_tethering_rounded,
+                                label: _copy(
+                                  tr: 'Sinyal',
+                                  en: 'Signal',
+                                  de: 'Signal',
+                                ),
+                                color: modeColor,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  FadeScaleRoute(page: const SignalScreen()),
+                                ),
+                              ),
                             ),
-                            2,
-                          ),
-                          _buildPlaceLensChip(
-                            _copy(tr: 'Açık', en: 'Open', de: 'Offen'),
-                            3,
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildPeopleActionChip(
+                                icon: Icons.compass_calibration_rounded,
+                                label: _copy(
+                                  tr: 'Yakındakiler',
+                                  en: 'Nearby',
+                                  de: 'In der Nähe',
+                                ),
+                                color: Colors.white.withValues(alpha: 0.7),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  SlideUpRoute(page: const DiscoverPeopleScreen()),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    SizedBox(height: compactDeck ? 10 : 12),
-                    SizedBox(
-                      height: suggestionHeight,
-                      child: Stack(
-                        children: [
-                          NotificationListener<ScrollNotification>(
-                            onNotification: (n) {
-                              if (n is ScrollUpdateNotification && mounted) {
-                                setState(() {});
-                              }
-                              return false;
-                            },
-                            child:
-                                _loadingPlaces && _visibleHeadlinePlaces.isEmpty
-                                ? ListView(
-                                    scrollDirection: Axis.horizontal,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                    ),
-                                    children: List.generate(
-                                      3,
-                                      (_) => const ShimmerSuggestionCard(),
-                                    ),
-                                  )
-                                : ListView.builder(
-                                    controller: _suggestionsController,
-                                    scrollDirection: Axis.horizontal,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                    ),
-                                    itemCount: _visibleHeadlinePlaces.length,
-                                    itemBuilder: (_, i) => _buildSuggestionCard(
-                                      _visibleHeadlinePlaces[i],
-                                      i,
-                                    ),
-                                  ),
-                          ),
-                          if (_showScrollHint)
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              bottom: 0,
-                              width: 50,
-                              child: IgnorePointer(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                      colors: [
-                                        AppColors.bgMain.withValues(alpha: 0),
-                                        AppColors.bgMain.withValues(
-                                          alpha: 0.92,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.chevron_right_rounded,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.3,
+                      SizedBox(height: compactDeck ? 10 : 12),
+                      SizedBox(
+                        height: 42,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          children: [
+                            _buildPlaceLensChip(l10n.phrase('Genel'), 0),
+                            _buildPlaceLensChip(
+                              _copy(
+                                tr: 'En Yakın',
+                                en: 'Nearest',
+                                de: 'Nächste',
+                              ),
+                              1,
+                            ),
+                            _buildPlaceLensChip(
+                              _copy(
+                                tr: 'En Popüler',
+                                en: 'Popular',
+                                de: 'Beliebt',
+                              ),
+                              2,
+                            ),
+                            _buildPlaceLensChip(
+                              _copy(tr: 'Açık', en: 'Open', de: 'Offen'),
+                              3,
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: compactDeck ? 10 : 12),
+                      SizedBox(
+                        height: suggestionHeight,
+                        child: Stack(
+                          children: [
+                            NotificationListener<ScrollNotification>(
+                              onNotification: (n) {
+                                if (n is ScrollUpdateNotification && mounted) {
+                                  setState(() {});
+                                }
+                                return false;
+                              },
+                              child:
+                                  _loadingPlaces &&
+                                      _visibleHeadlinePlaces.isEmpty
+                                  ? ListView(
+                                      scrollDirection: Axis.horizontal,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
                                       ),
-                                      size: 22,
+                                      children: List.generate(
+                                        3,
+                                        (_) => const ShimmerSuggestionCard(),
+                                      ),
+                                    )
+                                  : ListView.builder(
+                                      controller: _suggestionsController,
+                                      scrollDirection: Axis.horizontal,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
+                                      itemCount: _visibleHeadlinePlaces.length,
+                                      itemBuilder: (_, i) =>
+                                          _buildSuggestionCard(
+                                        _visibleHeadlinePlaces[i],
+                                        i,
+                                      ),
+                                    ),
+                            ),
+                            if (_showScrollHint)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: 50,
+                                child: IgnorePointer(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
+                                        colors: [
+                                          AppColors.bgMain.withValues(alpha: 0),
+                                          AppColors.bgMain.withValues(
+                                            alpha: 0.92,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Icon(
+                                        Icons.chevron_right_rounded,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        size: 22,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                    ] else ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          _copy(
+                            tr: 'Yakındaki etkinlikler — bir gruba katıl ya da kendi etkinliğini aç.',
+                            en: 'Nearby activities — join one or host your own.',
+                            de: 'Aktivitäten in der Nähe — mitmachen oder selbst hosten.',
+                          ),
+                          style: TextStyle(
+                            fontSize: compactDeck ? 11.5 : 12,
+                            height: 1.4,
+                            color: Colors.white.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: compactDeck ? 10 : 12),
+                      SizedBox(
+                        height: compactDeck ? 150.0 : 168.0,
+                        child: _loadingActivities && _nearbyActivities.isEmpty
+                            ? ListView(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                children: List.generate(
+                                  3,
+                                  (_) => const ShimmerSuggestionCard(),
+                                ),
+                              )
+                            : _nearbyActivities.isEmpty
+                            ? _buildActivitiesEmptyState()
+                            : ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 2,
+                                ),
+                                itemCount: _nearbyActivities.length,
+                                itemBuilder: (_, i) => _buildActivityRailCard(
+                                  _nearbyActivities[i],
+                                ),
+                              ),
+                      ),
+                    ],
                     SizedBox(height: compactDeck ? 10 : 12),
                     modeSelector,
                   ],
