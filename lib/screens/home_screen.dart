@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -15,9 +14,7 @@ import 'login_screen.dart';
 import 'signal_screen.dart';
 import 'profile_screen.dart';
 import 'discover_people_screen.dart';
-import 'inbox_screen.dart';
 import 'matches_screen.dart';
-import 'my_activities_screen.dart';
 import 'shorts_screen.dart';
 import 'create_post_screen.dart';
 import 'activity_detail_screen.dart';
@@ -166,8 +163,6 @@ class _HomeScreenState extends State<HomeScreen>
         return base;
     }
   }
-
-  bool get _showSecondaryPlaceCards => false;
 
   @override
   void initState() {
@@ -343,40 +338,6 @@ class _HomeScreenState extends State<HomeScreen>
     await Future<void>.delayed(const Duration(milliseconds: 120));
     if (!mounted) return;
     _showPlaceDetailSheet(resolvedPlace);
-  }
-
-  Future<bool> _confirmExit() async {
-    final l10n = context.l10n;
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              backgroundColor: AppColors.bgCard,
-              title: Text(
-                l10n.t('exit_app_title'),
-                style: const TextStyle(color: Colors.white),
-              ),
-              content: Text(
-                l10n.t('exit_app_message'),
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.74)),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(l10n.t('cancel')),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                  ),
-                  child: Text(l10n.t('exit_app_confirm')),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
   }
 
   Future<void> _startHomeFlow() async {
@@ -1992,110 +1953,101 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom + 6;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        if (await _confirmExit()) {
-          await SystemNavigator.pop();
-        }
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.bgMain,
-        body: Stack(
-          children: [
-            if (_showMap)
-              MapWidget(
-                cameraOptions: CameraOptions(
-                  center: _kDefaultMapCenter,
-                  zoom: 13,
-                ),
-                // ignore: experimental_member_use
-                androidHostingMode: AndroidPlatformViewHostingMode.HC,
-                styleUri: MapboxStyles.STANDARD,
-                onMapCreated: (map) {
-                  _mapboxMap = map;
-                  unawaited(_configureMapUi(map));
-                  _tryApplyInitialCamera();
-                },
-                onStyleLoadedListener: (_) async {
-                  _mapStyleReady = true;
-                  _lastRenderedPlacesSignature = '';
-                  _tryApplyInitialCamera();
-                  await _applyUserLocationPuck(_mapboxMap!);
-                  await _syncMapDecorations(force: true);
-                },
-              )
-            else
-              Container(color: AppColors.bgMap),
-            AnimatedBuilder(
-              animation: _modeTransitionAnim,
-              builder: (context, child) {
-                return IgnorePointer(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 600),
-                    color: _currentMode.color.withValues(alpha: 0.06),
-                  ),
-                );
+    return Scaffold(
+      backgroundColor: AppColors.bgMain,
+      body: Stack(
+        children: [
+          if (_showMap)
+            MapWidget(
+              cameraOptions: CameraOptions(
+                center: _kDefaultMapCenter,
+                zoom: 13,
+              ),
+              // ignore: experimental_member_use
+              androidHostingMode: AndroidPlatformViewHostingMode.HC,
+              styleUri: MapboxStyles.STANDARD,
+              onMapCreated: (map) {
+                _mapboxMap = map;
+                unawaited(_configureMapUi(map));
+                _tryApplyInitialCamera();
               },
+              onStyleLoadedListener: (_) async {
+                _mapStyleReady = true;
+                _lastRenderedPlacesSignature = '';
+                _tryApplyInitialCamera();
+                await _applyUserLocationPuck(_mapboxMap!);
+                await _syncMapDecorations(force: true);
+              },
+            )
+          else
+            Container(color: AppColors.bgMap),
+          AnimatedBuilder(
+            animation: _modeTransitionAnim,
+            builder: (context, child) {
+              return IgnorePointer(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 600),
+                  color: _currentMode.color.withValues(alpha: 0.06),
+                ),
+              );
+            },
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 132,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.bgMain.withValues(alpha: 0.92),
+                    AppColors.bgMain.withValues(alpha: 0),
+                  ],
+                ),
+              ),
             ),
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 210,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 600),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    AppColors.bgMain.withValues(alpha: 0.98),
+                    _currentMode.color.withValues(alpha: 0.1),
+                    AppColors.bgMain.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          _buildTopBar(MediaQuery.of(context).padding.top + 8),
+          _buildHeroCard(MediaQuery.of(context).padding.top + 8),
+          _buildActionRail(MediaQuery.of(context).padding.top + 8),
+          if (_bottomDeckCollapsed)
             Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 132,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppColors.bgMain.withValues(alpha: 0.92),
-                      AppColors.bgMain.withValues(alpha: 0),
-                    ],
-                  ),
+              bottom: bottomPadding + 80,
+              left: 12,
+              right: 12,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 260),
+                  child: _buildLensToggle(),
                 ),
               ),
             ),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 210,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 600),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      AppColors.bgMain.withValues(alpha: 0.98),
-                      _currentMode.color.withValues(alpha: 0.1),
-                      AppColors.bgMain.withValues(alpha: 0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            _buildTopBar(MediaQuery.of(context).padding.top + 8),
-            _buildHeroCard(MediaQuery.of(context).padding.top + 8),
-            _buildActionRail(MediaQuery.of(context).padding.top + 8),
-            if (_bottomDeckCollapsed)
-              Positioned(
-                bottom: bottomPadding + 80,
-                left: 12,
-                right: 12,
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 260),
-                    child: _buildLensToggle(),
-                  ),
-                ),
-              ),
-            _buildBottomDeck(bottomPadding),
-            if (_showBottomCard) _buildDetailCard(),
-          ],
-        ),
+          _buildBottomDeck(bottomPadding),
+          if (_showBottomCard) _buildDetailCard(),
+        ],
       ),
     );
   }
@@ -2134,577 +2086,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
 
     return elapsedSeconds >= 12 || movedMeters >= 35;
-  }
-
-  // ignore: unused_element
-  Widget _legacyBuild(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom + 12;
-    final modeColor = _currentMode.color;
-    final l10n = context.l10n;
-
-    return Scaffold(
-      backgroundColor: AppColors.bgMain,
-      body: Stack(
-        children: [
-          if (_showMap)
-            MapWidget(
-              cameraOptions: CameraOptions(
-                center: _kDefaultMapCenter,
-                zoom: 13,
-              ),
-              // ignore: experimental_member_use
-              androidHostingMode: AndroidPlatformViewHostingMode.HC,
-              styleUri: MapboxStyles.STANDARD,
-              onMapCreated: (map) {
-                _mapboxMap = map;
-                unawaited(_configureMapUi(map));
-                _tryApplyInitialCamera();
-              },
-              onStyleLoadedListener: (_) async {
-                _mapStyleReady = true;
-                _lastRenderedPlacesSignature = '';
-                _tryApplyInitialCamera();
-                await _syncMapDecorations(force: true);
-              },
-            )
-          else
-            Container(color: AppColors.bgMap),
-
-          AnimatedBuilder(
-            animation: _modeTransitionAnim,
-            builder: (context, child) {
-              return IgnorePointer(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 600),
-                  color: modeColor.withValues(alpha: 0.06),
-                ),
-              );
-            },
-          ),
-
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 140,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.bgMain.withValues(alpha: 0.9),
-                    AppColors.bgMain.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 260,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 600),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    AppColors.bgMain.withValues(alpha: 0.98),
-                    modeColor.withValues(alpha: 0.08),
-                    AppColors.bgMain.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          _buildTopBar(MediaQuery.of(context).padding.top + 8),
-
-          if (_showModeInfo)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 60,
-              left: 20,
-              right: 20,
-              child: AnimatedBuilder(
-                animation: _modeTransitionAnim,
-                builder: (_, child) => Opacity(
-                  opacity: _modeTransitionAnim.value.clamp(0.0, 1.0),
-                  child: Transform.translate(
-                    offset: Offset(0, 10 * (1 - _modeTransitionAnim.value)),
-                    child: child,
-                  ),
-                ),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: modeColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: modeColor.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(_currentMode.icon, size: 20, color: modeColor),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l10n.modeLabel(_currentMode.id),
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: modeColor,
-                              ),
-                            ),
-                            Text(
-                              l10n.phrase(_currentMode.description),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white.withValues(alpha: 0.5),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        l10n.formatPhrase('{count} öneri', {
-                          'count': _headlinePlaces.length,
-                        }),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: modeColor.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          Positioned(
-            right: 16,
-            top: MediaQuery.of(context).padding.top + 64,
-            child: Column(
-              children: [
-                _buildMapButton(Icons.my_location_rounded, () {
-                  final pos = _currentPosition;
-                  if (pos != null) {
-                    _flyToCoordinates(pos.longitude, pos.latitude, zoom: 15);
-                  }
-                }),
-                const SizedBox(height: 8),
-                _buildMapButton(
-                  Icons.wifi_tethering_rounded,
-                  () => Navigator.push(
-                    context,
-                    FadeScaleRoute(page: const SignalScreen()),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildMapButton(
-                  Icons.compass_calibration_rounded,
-                  () => Navigator.push(
-                    context,
-                    SlideUpRoute(page: const DiscoverPeopleScreen()),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildMapButton(
-                  Icons.favorite_rounded,
-                  () => Navigator.push(
-                    context,
-                    SlideUpRoute(page: const MatchesScreen()),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildMapButton(
-                  Icons.event_rounded,
-                  () => Navigator.push(
-                    context,
-                    SlideUpRoute(page: const MyActivitiesScreen()),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const NotificationBellButton(),
-                const SizedBox(height: 8),
-                Stack(
-                  children: [
-                    _buildMapButton(
-                      Icons.chat_rounded,
-                      () => Navigator.push(
-                        context,
-                        SlideUpRoute(page: const InboxScreen()),
-                      ),
-                    ),
-                    if (_myUid.isNotEmpty)
-                      StreamBuilder(
-                        stream: _firestoreService.getChats(_myUid),
-                        builder: (context, snapshot) {
-                          final chats = snapshot.data ?? const [];
-                          final unreadChats = chats.fold<int>(
-                            0,
-                            (sum, chat) => sum + chat.myUnread(_myUid),
-                          );
-                          return StreamBuilder(
-                            stream: _firestoreService.getPendingFriendRequests(
-                              _myUid,
-                            ),
-                            builder: (context, requestSnapshot) {
-                              final pendingRequests =
-                                  requestSnapshot.data?.docs.length ?? 0;
-                              final totalUnread = unreadChats + pendingRequests;
-                              if (totalUnread <= 0) {
-                                return const SizedBox.shrink();
-                              }
-                              return Positioned(
-                                top: 0,
-                                right: 0,
-                                child: Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.bgMain,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      totalUnread > 9 ? '9+' : '$totalUnread',
-                                      style: const TextStyle(
-                                        fontSize: 7,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          Positioned(
-            bottom: bottomPadding,
-            left: 0,
-            right: 0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      _buildPlaceLensChip(l10n.phrase('Genel'), 0),
-                      const SizedBox(width: 8),
-                      _buildPlaceLensChip(l10n.phrase('En Yakın'), 1),
-                      const SizedBox(width: 8),
-                      _buildPlaceLensChip(l10n.phrase('En Popüler'), 2),
-                      const SizedBox(width: 8),
-                      _buildPlaceLensChip(l10n.phrase('Açık'), 3),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 132,
-                  child: Stack(
-                    children: [
-                      NotificationListener<ScrollNotification>(
-                        onNotification: (n) {
-                          if (n is ScrollUpdateNotification && mounted) {
-                            setState(() {});
-                          }
-                          return false;
-                        },
-                        child: _loadingPlaces && _visibleHeadlinePlaces.isEmpty
-                            ? ListView(
-                                scrollDirection: Axis.horizontal,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                children: List.generate(
-                                  3,
-                                  (_) => const ShimmerSuggestionCard(),
-                                ),
-                              )
-                            : ListView.builder(
-                                controller: _suggestionsController,
-                                scrollDirection: Axis.horizontal,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                itemCount: _visibleHeadlinePlaces.length,
-                                itemBuilder: (_, i) => _buildSuggestionCard(
-                                  _visibleHeadlinePlaces[i],
-                                  i,
-                                ),
-                              ),
-                      ),
-                      if (_showScrollHint)
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: 50,
-                          child: IgnorePointer(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                  colors: [
-                                    AppColors.bgMain.withValues(alpha: 0),
-                                    AppColors.bgMain.withValues(alpha: 0.8),
-                                  ],
-                                ),
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                  size: 22,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-                if (_showSecondaryPlaceCards && _nearbyPlaces.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.place_rounded,
-                          size: 14,
-                          color: modeColor.withValues(alpha: 0.5),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          l10n.phrase('SU AN YAKININDA AKTIF'),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white.withValues(alpha: 0.25),
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const Spacer(),
-                        if (_loadingPlaces)
-                          SizedBox(
-                            width: 12,
-                            height: 12,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
-                              color: modeColor.withValues(alpha: 0.4),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 72,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _activeNearbyPlaces.length.clamp(0, 10),
-                      itemBuilder: (_, i) {
-                        final place = _activeNearbyPlaces[i];
-                        final isOpen = place['open_now'] == true;
-                        final pulse =
-                            (place['pulse_score'] as num?)?.toInt() ?? 0;
-                        final distance =
-                            place['distance_label']?.toString() ?? '';
-
-                        return AnimatedPress(
-                          onTap: () => _showPlaceDetailSheet(place),
-                          scaleDown: 0.96,
-                          child: Container(
-                            width: 180,
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.bgCard.withValues(alpha: 0.9),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: modeColor.withValues(alpha: 0.1),
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        place['name']?.toString() ?? '',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: isOpen
-                                            ? AppColors.success
-                                            : AppColors.error.withValues(
-                                                alpha: 0.5,
-                                              ),
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.star_rounded,
-                                      size: 12,
-                                      color: AppColors.warning,
-                                    ),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      '$pulse',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        distance.isNotEmpty
-                                            ? '$distance \u2022 ${place['vicinity']?.toString() ?? ''}'
-                                            : place['vicinity']?.toString() ??
-                                                  '',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.white.withValues(
-                                            alpha: 0.3,
-                                          ),
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 12),
-
-                SizedBox(
-                  height: 42,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: ModeConfig.all.length,
-                    itemBuilder: (_, i) {
-                      final isActive = i == _selectedMode;
-                      final mode = ModeConfig.all[i];
-
-                      return GestureDetector(
-                        onTap: () => _onModeChanged(i),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? mode.color
-                                : AppColors.bgCard.withValues(alpha: 0.8),
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(
-                              color: isActive
-                                  ? mode.color.withValues(alpha: 0.5)
-                                  : Colors.white.withValues(alpha: 0.08),
-                              width: 0.5,
-                            ),
-                            boxShadow: isActive
-                                ? [
-                                    BoxShadow(
-                                      color: mode.color.withValues(alpha: 0.3),
-                                      blurRadius: 12,
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                mode.icon,
-                                size: 16,
-                                color: isActive
-                                    ? Colors.white
-                                    : Colors.white.withValues(alpha: 0.4),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                l10n.modeLabel(mode.id),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: isActive
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                  color: isActive
-                                      ? Colors.white
-                                      : Colors.white.withValues(alpha: 0.4),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          if (_showBottomCard) _buildDetailCard(),
-        ],
-      ),
-    );
   }
 
   Widget _buildSuggestionCard(Map<String, dynamic> s, int index) {
@@ -2871,187 +2252,6 @@ class _HomeScreenState extends State<HomeScreen>
                         isOpen ? l10n.phrase('Açık') : l10n.phrase('Kapalı'),
                         style: TextStyle(
                           fontSize: compactCard ? 9.5 : 10,
-                          fontWeight: FontWeight.w700,
-                          color: isOpen ? AppColors.success : AppColors.error,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ignore: unused_element
-  Widget _legacySuggestionCard(Map<String, dynamic> s, int index) {
-    final color = _resolvePlaceAccent(s);
-    final modeColor = _currentMode.color;
-    final l10n = context.l10n;
-    final pulse = (s['pulse_score'] as num?)?.toInt() ?? 0;
-    final isOpen = s['open_now'] == true;
-    final title = s['name']?.toString() ?? s['title']?.toString() ?? '';
-    final subtitle =
-        s['vicinity']?.toString() ?? s['subtitle']?.toString() ?? '';
-    final density =
-        s['density_label']?.toString() ?? s['density']?.toString() ?? '';
-    final distance = s['distance_label']?.toString() ?? '';
-    final trend = s['trend_label']?.toString() ?? '';
-
-    return AnimatedPress(
-      onTap: () {
-        setState(() {
-          _showBottomCard = true;
-          _selectedAreaName = title;
-          _pulseScore = pulse;
-          _densityLabel = density;
-          _trendLabel = trend;
-        });
-
-        final lat = (s['lat'] as num?)?.toDouble();
-        final lng = (s['lng'] as num?)?.toDouble();
-
-        if (lat != null && lng != null) {
-          _flyToCoordinates(lng, lat, zoom: 15);
-        }
-
-        _showPlaceDetailSheet(s);
-      },
-      scaleDown: 0.96,
-      child: Container(
-        width: 220,
-        margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.bgCard.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: modeColor.withValues(alpha: 0.1)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: modeColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(_resolvePlaceIcon(s), size: 15, color: modeColor),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    subtitle.isNotEmpty
-                        ? subtitle
-                        : density.isNotEmpty
-                        ? l10n.densityLabel(density)
-                        : l10n.phrase('Canlı veri'),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.white.withValues(alpha: 0.4),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.favorite_rounded, size: 10, color: color),
-                      const SizedBox(width: 3),
-                      Text(
-                        '$pulse',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: color,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Text(
-                  '#${index + 1}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white.withValues(alpha: 0.25),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    distance.isNotEmpty
-                        ? '$distance - ${l10n.trendLabel(trend)}'
-                        : l10n.trendLabel(trend),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.white.withValues(alpha: 0.35),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: (isOpen ? AppColors.success : AppColors.error)
-                        .withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isOpen ? Icons.circle_rounded : Icons.cancel_rounded,
-                        size: 10,
-                        color: isOpen ? AppColors.success : AppColors.error,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        isOpen ? l10n.phrase('Açık') : l10n.phrase('Kapalı'),
-                        style: TextStyle(
-                          fontSize: 10,
                           fontWeight: FontWeight.w700,
                           color: isOpen ? AppColors.success : AppColors.error,
                         ),

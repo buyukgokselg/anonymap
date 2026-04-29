@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../localization/app_localizations.dart';
 import '../theme/colors.dart';
@@ -40,20 +41,69 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
     };
   }
 
+  Future<bool> _confirmExit() async {
+    final l10n = context.l10n;
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              backgroundColor: AppColors.bgCard,
+              title: Text(
+                l10n.t('exit_app_title'),
+                style: const TextStyle(color: Colors.white),
+              ),
+              content: Text(
+                l10n.t('exit_app_message'),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.74)),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(l10n.t('cancel')),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                  ),
+                  child: Text(l10n.t('exit_app_confirm')),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      backgroundColor: AppColors.bgMain,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: const [
-          HomeScreen(),
-          InboxScreen(),
-          ProfileScreen(),
-        ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        // Sekme 0 (Harita) değilse önce Harita'ya dön.
+        if (_currentIndex != 0) {
+          setState(() => _currentIndex = 0);
+          return;
+        }
+        // Harita'da iken çıkış onayı iste.
+        if (await _confirmExit()) {
+          await SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        extendBody: true,
+        backgroundColor: AppColors.bgMain,
+        body: IndexedStack(
+          index: _currentIndex,
+          children: const [
+            HomeScreen(),
+            InboxScreen(),
+            ProfileScreen(),
+          ],
+        ),
+        bottomNavigationBar: _buildBottomNav(),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
