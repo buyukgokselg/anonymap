@@ -185,7 +185,11 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
     required String label,
   }) {
     final selected = _currentIndex == index;
-    final color = selected ? AppColors.primary : Colors.white.withValues(alpha: 0.5);
+    // Inactive sekmeler için alpha 0.7 (önceden 0.5'ti) — yeni
+    // kullanıcı tüm sekmelerin var olduğunu rahat görsün.
+    final color = selected
+        ? AppColors.primary
+        : Colors.white.withValues(alpha: 0.7);
 
     return Expanded(
       child: Semantics(
@@ -196,30 +200,30 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
           behavior: HitTestBehavior.opaque,
           onTap: () => _selectTab(index),
           child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          decoration: BoxDecoration(
-            color: selected
-                ? AppColors.primary.withValues(alpha: 0.08)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 22, color: color),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  color: color,
+            duration: const Duration(milliseconds: 220),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            decoration: BoxDecoration(
+              color: selected
+                  ? AppColors.primary.withValues(alpha: 0.08)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 23, color: color),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    color: color,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         ),
       ),
     );
