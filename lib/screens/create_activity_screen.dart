@@ -323,9 +323,13 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
             color: Colors.white,
           ),
           const SizedBox(width: 4),
-          const Text(
-            'Yeni Etkinlik',
-            style: TextStyle(
+          Text(
+            context.tr3(
+              tr: 'Yeni Etkinlik',
+              en: 'New Activity',
+              de: 'Neue Aktivität',
+            ),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -347,25 +351,69 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
   }
 
   Widget _buildStepIndicator() {
+    final labels = [
+      context.tr3(tr: 'Kategori', en: 'Category', de: 'Kategorie'),
+      context.tr3(tr: 'Vibe', en: 'Vibe', de: 'Vibe'),
+      context.tr3(tr: 'Yer & Zaman', en: 'Place & Time', de: 'Ort & Zeit'),
+      context.tr3(tr: 'Kurallar', en: 'Rules', de: 'Regeln'),
+    ];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
+      child: Column(
         children: [
-          for (var i = 0; i < _stepCount; i++) ...[
-            Expanded(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 240),
-                height: 4,
-                decoration: BoxDecoration(
-                  color: i <= _currentStep
-                      ? AppColors.primary
-                      : Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(4),
+          // Bar segments
+          Row(
+            children: [
+              for (var i = 0; i < _stepCount; i++) ...[
+                Expanded(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 240),
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: i <= _currentStep
+                          ? AppColors.primary
+                          : Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            if (i != _stepCount - 1) const SizedBox(width: 6),
-          ],
+                if (i != _stepCount - 1) const SizedBox(width: 6),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Step labels — current step highlighted, others dimmed
+          Row(
+            children: [
+              for (var i = 0; i < _stepCount; i++) ...[
+                Expanded(
+                  child: AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: i == _currentStep
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: i == _currentStep
+                          ? AppColors.primary
+                          : i < _currentStep
+                              ? Colors.white.withValues(alpha: 0.55)
+                              : Colors.white.withValues(alpha: 0.32),
+                      letterSpacing: 0.2,
+                    ),
+                    child: Text(
+                      labels[i],
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                if (i != _stepCount - 1) const SizedBox(width: 6),
+              ],
+            ],
+          ),
         ],
       ),
     );
@@ -408,7 +456,17 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
                     ),
                   )
                 : Text(
-                    lastStep ? 'Yayınla 🎉' : 'Devam',
+                    lastStep
+                        ? context.tr3(
+                            tr: 'Yayınla 🎉',
+                            en: 'Publish 🎉',
+                            de: 'Veröffentlichen 🎉',
+                          )
+                        : context.tr3(
+                            tr: 'Devam',
+                            en: 'Continue',
+                            de: 'Weiter',
+                          ),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 15,
