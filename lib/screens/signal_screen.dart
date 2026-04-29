@@ -20,7 +20,12 @@ import 'create_activity_screen.dart';
 import 'profile_screen.dart';
 
 class SignalScreen extends StatefulWidget {
-  const SignalScreen({super.key});
+  /// [embedded]: HomeShellScreen sekmesi olarak gösterildiğinde true
+  /// olmalı — leading "geri" oku gizlenir (sekme bağlamında pop
+  /// edilecek route yok).
+  const SignalScreen({super.key, this.embedded = false});
+
+  final bool embedded;
   static bool isSignalActive = false;
 
   @override
@@ -1336,14 +1341,17 @@ class _SignalScreenState extends State<SignalScreen>
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_rounded,
-            color: Colors.white,
-            size: 20,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
+        leading: widget.embedded
+            ? null
+            : IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

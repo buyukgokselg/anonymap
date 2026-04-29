@@ -6,11 +6,13 @@ import '../theme/colors.dart';
 import 'home_screen.dart';
 import 'inbox_screen.dart';
 import 'profile_screen.dart';
+import 'signal_screen.dart';
 
-/// PulseCity ana shell — 3 sekmeli alt nav (Harita / Sohbet / Profil).
+/// PulseCity ana shell — 4 sekmeli alt nav (Harita / Radar / Sohbet / Profil).
 ///
-/// HomeScreen, InboxScreen ve ProfileScreen IndexedStack içinde tutulur,
-/// böylece sekmeler arası geçişte state korunur.
+/// IndexedStack içindeki sekmeler arası geçişte state korunur.
+/// Radar (SignalScreen) ve Sohbet (InboxScreen) `embedded: true` ile
+/// gösterilir; bu modda kendi AppBar'larındaki "geri" oku gizlenir.
 class HomeShellScreen extends StatefulWidget {
   const HomeShellScreen({super.key, this.initialIndex = 0});
 
@@ -26,7 +28,7 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex.clamp(0, 2);
+    _currentIndex = widget.initialIndex.clamp(0, 3);
   }
 
   String _copy({
@@ -98,7 +100,8 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
           index: _currentIndex,
           children: const [
             HomeScreen(),
-            InboxScreen(),
+            SignalScreen(embedded: true),
+            InboxScreen(embedded: true),
             ProfileScreen(),
           ],
         ),
@@ -118,7 +121,7 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
           child: Row(
             children: [
               _buildNavItem(
@@ -128,11 +131,16 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
               ),
               _buildNavItem(
                 index: 1,
+                icon: Icons.wifi_tethering_rounded,
+                label: _copy(tr: 'Radar', en: 'Radar', de: 'Radar'),
+              ),
+              _buildNavItem(
+                index: 2,
                 icon: Icons.chat_bubble_rounded,
                 label: _copy(tr: 'Sohbet', en: 'Chat', de: 'Chat'),
               ),
               _buildNavItem(
-                index: 2,
+                index: 3,
                 icon: Icons.person_rounded,
                 label: _copy(tr: 'Profil', en: 'Profile', de: 'Profil'),
               ),

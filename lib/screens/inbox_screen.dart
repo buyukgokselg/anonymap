@@ -21,7 +21,11 @@ import 'my_activities_screen.dart';
 import 'profile_screen.dart';
 
 class InboxScreen extends StatefulWidget {
-  const InboxScreen({super.key});
+  /// [embedded]: HomeShellScreen sekmesi olarak gösterildiğinde true
+  /// olmalı — leading "geri" oku gizlenir.
+  const InboxScreen({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<InboxScreen> createState() => _InboxScreenState();
@@ -1106,14 +1110,17 @@ class _InboxScreenState extends State<InboxScreen> {
         backgroundColor: AppColors.bgMain,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_rounded,
-            color: Colors.white,
-            size: 20,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
+        leading: widget.embedded
+            ? null
+            : IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: Text(
           _copy(tr: 'Mesajlar', en: 'Messages', de: 'Nachrichten'),
           style: const TextStyle(

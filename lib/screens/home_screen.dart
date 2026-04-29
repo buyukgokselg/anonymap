@@ -11,8 +11,6 @@ import '../services/auth_service.dart';
 import '../services/location_service.dart';
 import '../services/firestore_service.dart';
 import 'login_screen.dart';
-import 'signal_screen.dart';
-import 'profile_screen.dart';
 import 'discover_people_screen.dart';
 import 'matches_screen.dart';
 import 'shorts_screen.dart';
@@ -2306,9 +2304,48 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  /// Action rail'in en üstünde duran "Gönderi oluştur" butonu.
-  /// Profil rail'lerinde foto/story/shorts için inline + var; metin gönderisi
-  /// (feed post) için global giriş noktası bu rail butonu.
+  /// Action rail'in en üstünde duran "Etkinlik oluştur" FAB'ı.
+  /// CreateActivity uygulamanın ana yaratım eylemlerinden — Harita
+  /// üzerinde her zaman görünür, mevcut moda (Sosyal / Gece / Spor …)
+  /// uygun renkte parlar.
+  Widget _buildCreateActivityRailButton() {
+    final modeColor = _currentMode.color;
+    return AnimatedPress(
+      onTap: () => Navigator.push(
+        context,
+        SlideUpRoute(page: const CreateActivityScreen()),
+      ),
+      scaleDown: 0.9,
+      child: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [modeColor, modeColor.withValues(alpha: 0.72)],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: modeColor.withValues(alpha: 0.45),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.add_rounded,
+          color: Colors.white,
+          size: 26,
+        ),
+      ),
+    );
+  }
+
+  /// Action rail'inde duran "Gönderi oluştur" butonu (metin/feed post).
+  /// Profil rail'lerinde foto/story/shorts için inline + var; feed post
+  /// için global giriş noktası bu rail butonu.
   Widget _buildComposeRailButton() {
     return AnimatedPress(
       onTap: _openComposer,
@@ -2450,44 +2487,6 @@ class _HomeScreenState extends State<HomeScreen>
             _copy(tr: 'Etkinlik', en: 'Events', de: 'Events'),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPeopleActionChip({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.28)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 15, color: color),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -2966,27 +2965,6 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              SlideRightRoute(page: const ProfileScreen()),
-            ),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.bgCard.withValues(alpha: 0.92),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              ),
-              child: const Icon(
-                Icons.person_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -3163,6 +3141,8 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         child: Column(
           children: [
+            _buildCreateActivityRailButton(),
+            const SizedBox(height: 8),
             _buildComposeRailButton(),
             const SizedBox(height: 8),
             _buildMapButton(Icons.my_location_rounded, () {
@@ -3325,45 +3305,6 @@ class _HomeScreenState extends State<HomeScreen>
                             height: 1.4,
                             color: Colors.white.withValues(alpha: 0.5),
                           ),
-                        ),
-                      ),
-                      SizedBox(height: compactDeck ? 8 : 10),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _buildPeopleActionChip(
-                                icon: Icons.wifi_tethering_rounded,
-                                label: _copy(
-                                  tr: 'Sinyal',
-                                  en: 'Signal',
-                                  de: 'Signal',
-                                ),
-                                color: modeColor,
-                                onTap: () => Navigator.push(
-                                  context,
-                                  FadeScaleRoute(page: const SignalScreen()),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _buildPeopleActionChip(
-                                icon: Icons.compass_calibration_rounded,
-                                label: _copy(
-                                  tr: 'Yakındakiler',
-                                  en: 'Nearby',
-                                  de: 'In der Nähe',
-                                ),
-                                color: Colors.white.withValues(alpha: 0.7),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  SlideUpRoute(page: const DiscoverPeopleScreen()),
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
                       ),
                       SizedBox(height: compactDeck ? 10 : 12),
