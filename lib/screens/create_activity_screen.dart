@@ -73,6 +73,9 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
   String _preferredGender = 'any';
   String _recurrenceRule = '';
   DateTime? _recurrenceUntil;
+  // Minutes before activity start to fire the participant reminder push.
+  // 0 = "no reminder". Default 60 matches prior hardcoded backend behavior.
+  int _reminderMinutesBefore = 60;
 
   int _currentStep = 0;
   bool _submitting = false;
@@ -255,7 +258,7 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
         'city': _cityController.text.trim(),
         'startsAt': _startsAt.toUtc().toIso8601String(),
         if (_endsAt != null) 'endsAt': _endsAt!.toUtc().toIso8601String(),
-        'reminderMinutesBefore': 60,
+        'reminderMinutesBefore': _reminderMinutesBefore,
         if (_hasCapacity) 'maxParticipants': _maxParticipants,
         'visibility': activityVisibilityWireValue(_visibility),
         'joinPolicy': activityJoinPolicyWireValue(_joinPolicy),
@@ -1369,8 +1372,79 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
             const SizedBox(height: 12),
             _recurrenceUntilTile(),
           ],
+          const SizedBox(height: 18),
+          _label(context.tr3(
+            tr: 'Hatırlatma',
+            en: 'Reminder',
+            de: 'Erinnerung',
+          )),
+          const SizedBox(height: 8),
+          _reminderOptionsRow(),
         ],
       ),
+    );
+  }
+
+  Widget _reminderOptionsRow() {
+    final options = <(int, String)>[
+      (0, context.tr3(tr: 'Yok', en: 'None', de: 'Keine')),
+      (15, context.tr3(tr: '15 dk önce', en: '15 min before', de: '15 Min davor')),
+      (30, context.tr3(tr: '30 dk önce', en: '30 min before', de: '30 Min davor')),
+      (60, context.tr3(tr: '1 saat önce', en: '1 hour before', de: '1 Std davor')),
+      (180, context.tr3(tr: '3 saat önce', en: '3 hours before', de: '3 Std davor')),
+      (1440, context.tr3(tr: '1 gün önce', en: '1 day before', de: '1 Tag davor')),
+    ];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final option in options)
+          AnimatedPress(
+            onTap: () =>
+                setState(() => _reminderMinutesBefore = option.$1),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: _reminderMinutesBefore == option.$1
+                    ? AppColors.neonCyan.withValues(alpha: 0.18)
+                    : AppColors.bgChip,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _reminderMinutesBefore == option.$1
+                      ? AppColors.neonCyan.withValues(alpha: 0.55)
+                      : Colors.white.withValues(alpha: 0.06),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    option.$1 == 0
+                        ? Icons.notifications_off_rounded
+                        : Icons.notifications_active_rounded,
+                    size: 14,
+                    color: _reminderMinutesBefore == option.$1
+                        ? AppColors.neonCyan
+                        : Colors.white.withValues(alpha: 0.7),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    option.$2,
+                    style: TextStyle(
+                      color: _reminderMinutesBefore == option.$1
+                          ? AppColors.neonCyan
+                          : Colors.white.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 
