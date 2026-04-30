@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../localization/app_localizations.dart';
 import '../models/activity_model.dart';
+import '../models/activity_rating_model.dart';
 import '../models/chat_model.dart';
 import '../models/user_model.dart';
 import '../services/activity_service.dart';
@@ -19,6 +20,7 @@ import 'activity_group_chat_screen.dart';
 import 'chat_screen.dart';
 import 'create_activity_screen.dart';
 import 'my_activities_screen.dart';
+import 'pending_ratings_screen.dart';
 import 'profile_screen.dart';
 
 class InboxScreen extends StatefulWidget {
@@ -1254,6 +1256,9 @@ class _InboxScreenState extends State<InboxScreen> {
                           // Etkinlik özeti
                           const _InboxActivitiesStrip(),
 
+                          // Bekleyen puanlamalar
+                          const _InboxPendingRatingsStrip(),
+
                           // İstekler banner
                           _buildRequestsBanner(requests),
 
@@ -1753,6 +1758,184 @@ class _InboxActivitiesStripState extends State<_InboxActivitiesStrip> {
                   ),
                 ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Banner that surfaces pending activity ratings on the Inbox so users see
+/// the prompt without having to navigate to MyActivities. Mirrors the banner
+/// shown there but lives in a more prominent surface.
+class _InboxPendingRatingsStrip extends StatefulWidget {
+  const _InboxPendingRatingsStrip();
+
+  @override
+  State<_InboxPendingRatingsStrip> createState() =>
+      _InboxPendingRatingsStripState();
+}
+
+class _InboxPendingRatingsStripState extends State<_InboxPendingRatingsStrip> {
+  final ActivityService _service = ActivityService.instance;
+  StreamSubscription<void>? _listSub;
+  List<PendingRatingItem> _items = const [];
+  int _pendingPairs = 0;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+    // Re-check whenever an activity changes (cancel/leave/end may flip
+    // a participation into rateable state).
+    _listSub = _service.listChanged.listen((_) => _fetch());
+  }
+
+  @override
+  void dispose() {
+    _listSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetch() async {
+    try {
+      final res = await _service.listPendingRatings();
+      if (!mounted) return;
+      final pairs = res.items.fold<int>(
+        0,
+        (sum, group) => sum + group.rateableUsers.length,
+      );
+      setState(() {
+        _items = res.items;
+        _pendingPairs = pairs;
+        _loaded = true;
+      });
+    } catch (error, stack) {
+      debugPrint('Inbox pending ratings fetch failed: $error\n$stack');
+      if (!mounted) return;
+      setState(() {
+        _loaded = true;
+        _pendingPairs = 0;
+      });
+    }
+  }
+
+  Future<void> _open() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PendingRatingsScreen()),
+    );
+    if (!mounted) return;
+    unawaited(_fetch());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded || _pendingPairs <= 0) return const SizedBox.shrink();
+
+    final activitiesCount = _items.length;
+    final pairLabel = _pendingPairs == 1
+        ? context.tr3(tr: '1 kişiyi', en: '1 person', de: '1 Person')
+        : context.tr3(
+            tr: '$_pendingPairs kişiyi',
+            en: '$_pendingPairs people',
+            de: '$_pendingPairs Personen',
+          );
+    final activityLabel = activitiesCount == 1
+        ? context.tr3(
+            tr: '1 etkinlikten',
+            en: 'from 1 activity',
+            de: 'aus 1 Aktivität',
+          )
+        : context.tr3(
+            tr: '$activitiesCount etkinlikten',
+            en: 'from $activitiesCount activities',
+            de: 'aus $activitiesCount Aktivitäten',
+          );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: _open,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.22),
+                  AppColors.primaryGlow.withValues(alpha: 0.12),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.32),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.star_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.tr3(
+                          tr: 'Değerlendirme bekliyor',
+                          en: 'Rating pending',
+                          de: 'Bewertung ausstehend',
+                        ),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        context.tr3(
+                          tr: '$activityLabel $pairLabel puanlamadın.',
+                          en: "You haven't rated $pairLabel $activityLabel.",
+                          de:
+                              'Du hast $pairLabel $activityLabel noch nicht bewertet.',
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.62),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.white.withValues(alpha: 0.55),
+                  size: 22,
+                ),
+              ],
+            ),
           ),
         ),
       ),
